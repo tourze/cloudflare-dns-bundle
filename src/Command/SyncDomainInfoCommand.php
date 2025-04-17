@@ -37,7 +37,7 @@ class SyncDomainInfoCommand extends Command
                 foreach ($result as $item) {
                     // 获取域名详情
                     $detail = $this->dnsService->getDomain($domain, $item['name']);
-                    dump($detail);
+                    var_dump($detail);
 
                     // 更新域名信息
                     $domain->setRegistrar($detail['registrar'] ?? null);
