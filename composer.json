@@ -19,7 +19,7 @@
     "symfony/http-client-contracts": "^2.5 | ^3.0",
     "symfony/yaml": "^6.4 || ^7.1",
     "tourze/enum-extra": "~0.0.5",
-    "tourze/easy-admin-attribute": "0.0.*",
+    "tourze/easy-admin-attribute": "0.1.*",
     "tourze/doctrine-track-bundle": "0.0.*",
     "tourze/doctrine-indexed-bundle": "0.0.*",
     "psr/log": "^3|^2|^1"
