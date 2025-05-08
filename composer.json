@@ -22,7 +22,8 @@
     "tourze/easy-admin-attribute": "0.1.*",
     "tourze/doctrine-track-bundle": "0.1.*",
     "tourze/doctrine-indexed-bundle": "0.0.*",
-    "psr/log": "^3|^2|^1"
+    "psr/log": "^3|^2|^1",
+    "tourze/doctrine-timestamp-bundle": "0.0.*"
   },
   "autoload": {
     "psr-4": {
