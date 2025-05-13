@@ -254,7 +254,7 @@ final class CloudflareHttpClient
 
     /**
      * 查询域名的Zone ID
-     * 
+     *
      * 这个方法可以根据域名名称获取对应的Zone ID
      * 参考文档: https://api.cloudflare.com/#zone-list-zones
      */
@@ -269,6 +269,20 @@ final class CloudflareHttpClient
                     'per_page' => 1
                 ]
             ]
+        );
+    }
+
+    /**
+     * 获取Zone详情
+     *
+     * 这个方法获取指定Zone的详细信息，包括计划类型等
+     * 参考文档: https://api.cloudflare.com/#zone-zone-details
+     */
+    public function getZoneDetails(string $zoneId): ResponseInterface
+    {
+        return $this->client->request(
+            'GET',
+            sprintf('/client/v4/zones/%s', $zoneId)
         );
     }
 }

@@ -54,4 +54,21 @@ final class DnsAnalyticsService extends BaseCloudflareService
             'params' => $params,
         ]);
     }
+
+    /**
+     * 获取Zone详情
+     *
+     * 获取域名的Zone详细信息，包括计划类型和状态
+     *
+     * @throws TransportExceptionInterface
+     */
+    public function getZoneDetails(DnsDomain $domain): array
+    {
+        $client = $this->getCloudFlareClient($domain);
+        $response = $client->getZoneDetails($domain->getZoneId());
+        return $this->handleResponse($response->toArray(), '获取CloudFlare域名详情失败', [
+            'domain' => $domain->getName(),
+            'zoneId' => $domain->getZoneId(),
+        ]);
+    }
 }
