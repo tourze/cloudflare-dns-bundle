@@ -2,99 +2,100 @@
 
 namespace CloudflareDnsBundle\Command;
 
+use CloudflareDnsBundle\Message\SyncDnsRecordToRemoteMessage;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
-use CloudflareDnsBundle\Service\DnsRecordService;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 
-#[AsCommand(name: SyncDomainRecordToRemoteCommand::NAME)]
+#[AsCommand(
+    name: SyncDomainRecordToRemoteCommand::NAME,
+    description: '将DNS记录同步到远程Cloudflare'
+)]
 class SyncDomainRecordToRemoteCommand extends Command
 {
     public const NAME = 'cloudflare:sync-dns-domain-record-to-remote';
 
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
         private readonly DnsRecordRepository $recordRepository,
-        private readonly DnsRecordService $dnsService,
-        private readonly LoggerInterface $logger,
+        private readonly MessageBusInterface $messageBus,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addArgument('dnsRecordId', InputArgument::REQUIRED, 'DNS本地记录ID');
+        $this
+            ->addArgument('dnsRecordId', InputArgument::REQUIRED, 'DNS本地记录ID')
+            ->addOption('all', 'a', InputOption::VALUE_NONE, '同步所有未同步的记录');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $record = $this->recordRepository->find($input->getArgument('dnsRecordId'));
-        if (!$record) {
-            throw new \Exception('找不到记录信息');
+        $io = new SymfonyStyle($input, $output);
+
+        // 检查是否同步所有记录
+        if ($input->getOption('all')) {
+            return $this->syncAllRecords($io);
         }
 
-        if ($record->isSyncing()) {
-            $output->writeln('记录正在同步中,跳过处理');
+        // 同步单个记录
+        $recordId = $input->getArgument('dnsRecordId');
+        $record = $this->recordRepository->find($recordId);
+
+        if (!$record) {
+            $io->error(sprintf('找不到ID为%s的DNS记录', $recordId));
             return Command::FAILURE;
         }
 
-        try {
-            $record->setSyncing(true);
-            $domain = $record->getDomain();
+        // 创建消息并发送到队列
+        $message = new SyncDnsRecordToRemoteMessage($record->getId());
+        $this->messageBus->dispatch($message);
 
-            // 如果没记录ID，那么我们试试搜索
-            if (!$record->getRecordId()) {
-                $response = $this->dnsService->listRecords($domain, [
-                    'type' => $record->getType()->value,
-                    'name' => "{$record->getRecord()}.{$domain->getName()}",
-                ]);
+        $io->success(sprintf(
+            '已将DNS记录【%s】加入同步队列，类型: %s，内容: %s', 
+            $record->getFullName(), 
+            $record->getType()->value, 
+            $record->getContent()
+        ));
 
-                if (!empty($response['result'])) {
-                    $record->setRecordId($response['result'][0]['id']);
-                    $this->entityManager->persist($record);
-                    $this->entityManager->flush();
-                }
-            }
+        return Command::SUCCESS;
+    }
 
-            // 还是没有，我们尝试创建
-            if (!$record->getRecordId()) {
-                $result = $this->dnsService->createRecord($domain, $record);
-                $this->logger->info('DNS记录创建结果', [
-                    'result' => $result,
-                    'record' => $record,
-                ]);
+    /**
+     * 同步所有未同步的记录
+     */
+    private function syncAllRecords(SymfonyStyle $io): int
+    {
+        // 查询所有未同步的记录
+        $records = $this->recordRepository->findBy([
+            'synced' => false,
+        ]);
 
-                $record->setRecordId($result['id']);
-                $this->entityManager->persist($record);
-                $this->entityManager->flush();
-            }
-
-            // 更新最终本地结果到远程
-            $result = $this->dnsService->updateRecord($record);
-            $this->logger->info('DNS记录更新结果', [
-                'record' => $record,
-                'result' => $result,
-            ]);
-
-            // 更新同步状态为已同步
-            $record->setSynced(true);
-            $this->entityManager->persist($record);
-        } catch (\Throwable $e) {
-            $this->logger->error('同步DNS记录失败', [
-                'record' => $record,
-                'exception' => $e,
-            ]);
-            throw $e;
-        } finally {
-            $record->setSyncing(false);
-            $this->entityManager->persist($record);
-            $this->entityManager->flush();
+        if (empty($records)) {
+            $io->info('没有需要同步的DNS记录');
+            return Command::SUCCESS;
         }
+
+        $count = count($records);
+        $io->info(sprintf('找到%d条未同步的DNS记录', $count));
+
+        $io->progressStart($count);
+
+        foreach ($records as $record) {
+            // 创建消息并发送到队列
+            $message = new SyncDnsRecordToRemoteMessage($record->getId());
+            $this->messageBus->dispatch($message);
+            $io->progressAdvance();
+        }
+
+        $io->progressFinish();
+        $io->success(sprintf('已将%d条DNS记录加入同步队列', $count));
 
         return Command::SUCCESS;
     }

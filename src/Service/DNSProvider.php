@@ -5,10 +5,12 @@ namespace CloudflareDnsBundle\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Enum\DnsRecordType;
+use CloudflareDnsBundle\Message\SyncDnsRecordToRemoteMessage;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Tourze\DDNSContracts\DNSProviderInterface;
 use Tourze\DDNSContracts\ExpectResolveResult;
 
@@ -22,6 +24,7 @@ class DNSProvider implements DNSProviderInterface
         private readonly DnsRecordRepository $recordRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
+        private readonly MessageBusInterface $messageBus,
     ) {
     }
 
@@ -212,32 +215,35 @@ class DNSProvider implements DNSProviderInterface
     private function syncToRemoteIfNeeded(DnsRecord $record): void
     {
         // 检查是否需要同步
-        if (!$record->isSynced()) {
-            try {
-                $domain = $record->getDomain();
+        if ($record->isSynced()) {
+            return;
+        }
 
-                // 如果没有记录ID，需要创建新记录
-                if (!$record->getRecordId()) {
-                    // 这里应该注入DnsRecordService服务
-                    // 由于当前服务中没有注入此服务，此处仅示例代码
-                    // 实际应该在构造函数中注入DnsRecordService
+        try {
+            // 通过消息队列异步处理同步操作
+            $this->entityManager->persist($record);
+            $this->entityManager->flush();
 
-                    $this->logger->info('DNS记录需要同步到远程，但当前未实现立即同步功能', [
-                        'record' => $record->getFullName(),
-                        'type' => $record->getType()->value,
-                        'content' => $record->getContent(),
-                    ]);
+            // 创建同步消息并发送到消息队列
+            if ($record->getId()) {
+                $message = new SyncDnsRecordToRemoteMessage($record->getId());
+                $this->messageBus->dispatch($message);
 
-                    // 标记为未同步，等待命令行程序或其他过程处理
-                    $record->setSynced(false);
-                    $this->entityManager->flush();
-                }
-            } catch (\Exception $e) {
-                $this->logger->error('同步DNS记录到远程失败', [
+                $this->logger->info('DNS记录已加入同步队列', [
                     'record' => $record->getFullName(),
-                    'error' => $e->getMessage(),
+                    'type' => $record->getType()->value,
+                    'content' => $record->getContent(),
+                ]);
+            } else {
+                $this->logger->warning('DNS记录未保存，无法加入同步队列', [
+                    'record' => $record->getFullName(),
                 ]);
             }
+        } catch (\Exception $e) {
+            $this->logger->error('将DNS记录加入同步队列失败', [
+                'record' => $record->getFullName(),
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

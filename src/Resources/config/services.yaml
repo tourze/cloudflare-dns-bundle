@@ -12,6 +12,8 @@ services:
     resource: '../../DataFixtures/'
   CloudflareDnsBundle\EventListener\:
     resource: '../../EventListener/'
+  CloudflareDnsBundle\MessageHandler\:
+    resource: '../../MessageHandler/'
   CloudflareDnsBundle\Repository\:
     resource: '../../Repository/'
   CloudflareDnsBundle\Service\:
