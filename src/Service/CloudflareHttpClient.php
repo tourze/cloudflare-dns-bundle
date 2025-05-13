@@ -273,10 +273,7 @@ final class CloudflareHttpClient
     }
 
     /**
-     * 获取Zone详情
-     *
-     * 这个方法获取指定Zone的详细信息，包括计划类型等
-     * 参考文档: https://api.cloudflare.com/#zone-zone-details
+     * 获取域名详情信息
      */
     public function getZoneDetails(string $zoneId): ResponseInterface
     {

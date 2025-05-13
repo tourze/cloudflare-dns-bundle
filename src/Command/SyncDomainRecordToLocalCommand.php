@@ -82,6 +82,9 @@ class SyncDomainRecordToLocalCommand extends Command
                     $record->setTtl($item['ttl']);
                     $record->setProxy($item['proxiable'] ?? false);
 
+                    // 设置为已同步状态，因为数据来自远程
+                    $record->setSynced(true);
+
                     $this->entityManager->persist($record);
                     $this->entityManager->flush();
 

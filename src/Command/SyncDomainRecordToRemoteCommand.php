@@ -80,6 +80,10 @@ class SyncDomainRecordToRemoteCommand extends Command
                 'record' => $record,
                 'result' => $result,
             ]);
+
+            // 更新同步状态为已同步
+            $record->setSynced(true);
+            $this->entityManager->persist($record);
         } catch (\Throwable $e) {
             $this->logger->error('同步DNS记录失败', [
                 'record' => $record,
