@@ -54,6 +54,7 @@ php bin/console cloudflare:sync-domain-info
 php bin/console cloudflare:sync-domain-record-to-local [domainId]
 php bin/console cloudflare:sync-dns-domain-record <dnsRecordId>
 php bin/console cloudflare:sync-dns-analytics [--since -24h] [--until now] [--time-delta 1h]
+php bin/console cloudflare:sync-domains <iamKeyId> [<accountId>] [--domain=example.com] [--dry-run] [--force]
 ```
 
 5. Use the service layer in your own code:

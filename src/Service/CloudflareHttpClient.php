@@ -251,4 +251,24 @@ final class CloudflareHttpClient
             sprintf('/client/v4/accounts/%s/registrar/domains/%s', $accountId, $domainName)
         );
     }
+
+    /**
+     * 查询域名的Zone ID
+     * 
+     * 这个方法可以根据域名名称获取对应的Zone ID
+     * 参考文档: https://api.cloudflare.com/#zone-list-zones
+     */
+    public function lookupZoneId(string $domainName): ResponseInterface
+    {
+        return $this->client->request(
+            'GET',
+            '/client/v4/zones',
+            [
+                'query' => [
+                    'name' => $domainName,
+                    'per_page' => 1
+                ]
+            ]
+        );
+    }
 }

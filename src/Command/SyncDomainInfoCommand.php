@@ -2,14 +2,13 @@
 
 namespace CloudflareDnsBundle\Command;
 
-use CloudflareDnsBundle\Repository\DnsDomainRepository;
-use CloudflareDnsBundle\Service\DnsDomainService;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
+use CloudflareDnsBundle\Service\DomainSynchronizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: SyncDomainInfoCommand::NAME)]
 class SyncDomainInfoCommand extends Command
@@ -17,48 +16,64 @@ class SyncDomainInfoCommand extends Command
     public const NAME = 'cloudflare:sync-domain-info';
 
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly DnsDomainRepository $domainRepository,
-        private readonly DnsDomainService $dnsService,
-        private readonly LoggerInterface $logger,
+        private readonly DomainSynchronizer $domainSynchronizer,
     ) {
         parent::__construct();
     }
 
+    protected function configure(): void
+    {
+        $this
+            ->setDescription('同步域名信息（状态、过期时间、Zone ID等）')
+            ->addOption('domain', 'd', InputOption::VALUE_OPTIONAL, '只同步指定名称的域名');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $domains = $this->domainRepository->findAll();
-        foreach ($domains as $domain) {
-            try {
-                $output->writeln("开始处理域名：{$domain->getName()}");
+        $io = new SymfonyStyle($input, $output);
+        $specificDomain = $input->getOption('domain');
 
-                // 获取域名列表
-                $result = $this->dnsService->listDomains($domain);
-                foreach ($result as $item) {
-                    // 获取域名详情
-                    $detail = $this->dnsService->getDomain($domain, $item['name']);
-                    var_dump($detail);
+        // 查找指定域名或所有域名
+        $domains = $this->domainSynchronizer->findDomains($specificDomain);
 
-                    // 更新域名信息
-                    $domain->setRegistrar($detail['registrar'] ?? null);
-                    $domain->setStatus($detail['status'] ?? null);
-                    $domain->setCreateTime(new \DateTime($detail['created_at']));
-                    $domain->setExpiresAt(new \DateTime($detail['expires_at']));
-                    $domain->setLockedUntil(isset($detail['locked_until']) ? new \DateTime($detail['locked_until']) : null);
-                    $domain->setAutoRenew($detail['auto_renew'] ?? false);
-
-                    $this->entityManager->persist($domain);
-                    $this->entityManager->flush();
-                }
-
-                $output->writeln('处理完成');
-            } catch (\Throwable $e) {
-                $this->logger->error('同步域名信息失败', [
-                    'domain' => $domain,
-                    'exception' => $e,
-                ]);
-                $output->writeln("<error>处理失败: {$e->getMessage()}</error>");
+        if (empty($domains)) {
+            if ($specificDomain) {
+                $io->error(sprintf('未找到指定的域名: %s', $specificDomain));
+                return Command::FAILURE;
+            } else {
+                $io->info('没有找到任何域名');
+                return Command::SUCCESS;
             }
+        }
+
+        if ($specificDomain) {
+            $io->info(sprintf('只同步域名: %s', $specificDomain));
+        } else {
+            $io->info(sprintf('同步所有域名，共 %d 个', count($domains)));
+        }
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        $io->section('开始同步域名信息');
+
+        foreach ($domains as $domain) {
+            $io->text("处理域名：{$domain->getName()}");
+
+            // 同步域名信息
+            $success = $this->domainSynchronizer->syncDomainInfo($domain, $io);
+
+            if ($success) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        if ($successCount > 0) {
+            $io->success("同步完成，成功: {$successCount}，失败: {$errorCount}");
+        } else {
+            $io->warning("没有同步任何域名，失败: {$errorCount}");
         }
 
         return Command::SUCCESS;

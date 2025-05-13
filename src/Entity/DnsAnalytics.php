@@ -8,61 +8,41 @@ use Doctrine\ORM\Mapping as ORM;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Attribute\CreateTimeColumn;
 use Tourze\DoctrineTimestampBundle\Attribute\UpdateTimeColumn;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Filter\Filterable;
-use Tourze\EasyAdmin\Attribute\Permission\AsPermission;
 
-#[AsPermission(title: 'DNS分析数据')]
 #[ORM\Entity(repositoryClass: DnsAnalyticsRepository::class)]
 #[ORM\Table(name: 'ims_cloudflare_dns_analytics', options: ['comment' => 'DNS分析数据'])]
 class DnsAnalytics
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
     private ?int $id = 0;
 
-    #[ListColumn(title: '所属根域名')]
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(onDelete: 'CASCADE')]
     private ?DnsDomain $domain = null;
 
-    #[Filterable]
-    #[ListColumn]
     #[ORM\Column(type: Types::STRING, length: 64, options: ['comment' => '查询名称'])]
     private ?string $queryName = null;
 
-    #[ListColumn]
     #[ORM\Column(type: Types::STRING, length: 32, options: ['comment' => '查询类型'])]
     private ?string $queryType = null;
 
-    #[ListColumn]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => '查询次数'])]
     private ?int $queryCount = 0;
 
-    #[ListColumn]
     #[ORM\Column(type: Types::FLOAT, options: ['comment' => '平均响应时间(ms)'])]
     private ?float $responseTimeAvg = 0.0;
 
-    #[ListColumn]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['comment' => '统计时间'])]
     private ?\DateTimeInterface $statTime = null;
 
-    #[Filterable]
     #[IndexColumn]
-    #[ListColumn(order: 98, sorter: true)]
-    #[ExportColumn]
     #[CreateTimeColumn]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '创建时间'])]
     private ?\DateTimeInterface $createTime = null;
 
     #[UpdateTimeColumn]
-    #[ListColumn(order: 99, sorter: true)]
-    #[Filterable]
-    #[ExportColumn]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '更新时间'])]
     private ?\DateTimeInterface $updateTime = null;
 

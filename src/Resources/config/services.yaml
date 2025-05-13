@@ -6,8 +6,12 @@ services:
 
   CloudflareDnsBundle\Command\:
     resource: '../../Command/'
-  CloudflareDnsBundle\EventSubscriber\:
-    resource: '../../EventSubscriber/'
+  CloudflareDnsBundle\Controller\:
+    resource: '../../Controller/'
+  CloudflareDnsBundle\DataFixtures\:
+    resource: '../../DataFixtures/'
+  CloudflareDnsBundle\EventListener\:
+    resource: '../../EventListener/'
   CloudflareDnsBundle\Repository\:
     resource: '../../Repository/'
   CloudflareDnsBundle\Service\:

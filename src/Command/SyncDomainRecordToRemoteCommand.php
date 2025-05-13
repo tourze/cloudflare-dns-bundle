@@ -12,10 +12,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: SyncDomainRecordCommand::NAME)]
-class SyncDomainRecordCommand extends Command
+#[AsCommand(name: SyncDomainRecordToRemoteCommand::NAME)]
+class SyncDomainRecordToRemoteCommand extends Command
 {
-    public const NAME = 'cloudflare:sync-dns-domain-record';
+    public const NAME = 'cloudflare:sync-dns-domain-record-to-remote';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

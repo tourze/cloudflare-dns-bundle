@@ -47,13 +47,14 @@ return [
 
 3. 通过后台 UI 或直接在数据库中添加 IAM 密钥和域名。
 
-4. 使用命令行工具同步和管理 DNS：
+4. 使用CLI命令同步和管理DNS:
 
 ```bash
 php bin/console cloudflare:sync-domain-info
 php bin/console cloudflare:sync-domain-record-to-local [domainId]
 php bin/console cloudflare:sync-dns-domain-record <dnsRecordId>
 php bin/console cloudflare:sync-dns-analytics [--since -24h] [--until now] [--time-delta 1h]
+php bin/console cloudflare:sync-domains <iamKeyId> [<accountId>] [--domain=example.com] [--dry-run] [--force]
 ```
 
 5. 在业务代码中调用服务层：
