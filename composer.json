@@ -38,7 +38,7 @@
     "tourze/enum-extra": "~0.0.5"
   },
   "require-dev": {
-    "doctrine/doctrine-fixtures-bundle": "^3.5",
+    "doctrine/doctrine-fixtures-bundle": "^4.0",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^10.0"
   },
