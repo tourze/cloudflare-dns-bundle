@@ -66,11 +66,12 @@ class DnsDomainServiceTest extends TestCase
         $domain = new DnsDomain();
         $domain->setName('example.com');
         $domain->setZoneId('test-zone-id');
-        $domain->setAccountId('test-account-id');
 
         $iamKey = new IamKey();
+        $iamKey->setName('Test Key');
         $iamKey->setAccessKey('test-access-key');
         $iamKey->setSecretKey('test-secret-key');
+        $iamKey->setAccountId('test-account-id');
         $domain->setIamKey($iamKey);
 
         return $domain;

@@ -136,11 +136,6 @@ class IamKeyCrudController extends AbstractCrudController
             // 使用所有域名，不进行过滤
             $domainsToSync = $domains['result'];
 
-            if (empty($domainsToSync)) {
-                $this->addFlash('warning', sprintf('IAM Key [%s] 下没有可同步的域名', $iamKey->getName()));
-                return $this->redirect($this->adminUrlGenerator->setAction(Action::DETAIL)->setEntityId($iamKey->getId())->generateUrl());
-            }
-
             // 直接执行同步，适配Web界面场景
             $syncCount = 0;
             $errorCount = 0;
