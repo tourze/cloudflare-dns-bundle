@@ -7,8 +7,7 @@ use CloudflareDnsBundle\Repository\DnsRecordRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\CreateTimeColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\UpdateTimeColumn;
+use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
 use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
 use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
@@ -18,6 +17,8 @@ use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
 #[ORM\UniqueConstraint(name: 'ims_cloudflare_dns_record_idx_uniq', columns: ['domain_id', 'type', 'record', 'record_id'])]
 class DnsRecord implements \Stringable
 {
+    use TimestampableAware;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -58,7 +59,7 @@ class DnsRecord implements \Stringable
 
     #[TrackColumn]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '最后同步时间'])]
-    private ?\DateTimeInterface $lastSyncedAt = null;
+    private ?\DateTimeInterface $lastSyncedTime = null;
 
     #[CreatedByColumn]
     #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
@@ -67,15 +68,6 @@ class DnsRecord implements \Stringable
     #[UpdatedByColumn]
     #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
     private ?string $updatedBy = null;
-
-    #[IndexColumn]
-    #[CreateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '创建时间'])]
-    private ?\DateTimeInterface $createTime = null;
-
-    #[UpdateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '更新时间'])]
-    private ?\DateTimeInterface $updateTime = null;
 
     /**
      * 是否正在同步中,用于防止循环执行
@@ -181,20 +173,20 @@ class DnsRecord implements \Stringable
         $this->synced = $synced;
 
         if ($synced) {
-            $this->setLastSyncedAt(new \DateTime());
+            $this->setLastSyncedTime(new \DateTime());
         }
 
         return $this;
     }
 
-    public function getLastSyncedAt(): ?\DateTimeInterface
+    public function getLastSyncedTime(): ?\DateTimeInterface
     {
-        return $this->lastSyncedAt;
+        return $this->lastSyncedTime;
     }
 
-    public function setLastSyncedAt(?\DateTimeInterface $lastSyncedAt): static
+    public function setLastSyncedTime(?\DateTimeInterface $lastSyncedTime): static
     {
-        $this->lastSyncedAt = $lastSyncedAt;
+        $this->lastSyncedTime = $lastSyncedTime;
 
         return $this;
     }
@@ -232,26 +224,6 @@ class DnsRecord implements \Stringable
     public function getUpdatedBy(): ?string
     {
         return $this->updatedBy;
-    }
-
-    public function setCreateTime(?\DateTimeInterface $createdAt): void
-    {
-        $this->createTime = $createdAt;
-    }
-
-    public function getCreateTime(): ?\DateTimeInterface
-    {
-        return $this->createTime;
-    }
-
-    public function setUpdateTime(?\DateTimeInterface $updateTime): void
-    {
-        $this->updateTime = $updateTime;
-    }
-
-    public function getUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->updateTime;
     }
 
     public function __toString(): string

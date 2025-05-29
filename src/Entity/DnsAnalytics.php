@@ -6,13 +6,14 @@ use CloudflareDnsBundle\Repository\DnsAnalyticsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\CreateTimeColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\UpdateTimeColumn;
+use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 
 #[ORM\Entity(repositoryClass: DnsAnalyticsRepository::class)]
 #[ORM\Table(name: 'ims_cloudflare_dns_analytics', options: ['comment' => 'DNS分析数据'])]
-class DnsAnalytics
+class DnsAnalytics implements \Stringable
 {
+    use TimestampableAware;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -34,17 +35,9 @@ class DnsAnalytics
     #[ORM\Column(type: Types::FLOAT, options: ['comment' => '平均响应时间(ms)'])]
     private ?float $responseTimeAvg = 0.0;
 
+    #[IndexColumn]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['comment' => '统计时间'])]
     private ?\DateTimeInterface $statTime = null;
-
-    #[IndexColumn]
-    #[CreateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '创建时间'])]
-    private ?\DateTimeInterface $createTime = null;
-
-    #[UpdateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '更新时间'])]
-    private ?\DateTimeInterface $updateTime = null;
 
     public function getId(): ?int
     {
@@ -117,23 +110,8 @@ class DnsAnalytics
         return $this;
     }
 
-    public function setCreateTime(?\DateTimeInterface $createdAt): void
+    public function __toString(): string
     {
-        $this->createTime = $createdAt;
-    }
-
-    public function getCreateTime(): ?\DateTimeInterface
-    {
-        return $this->createTime;
-    }
-
-    public function setUpdateTime(?\DateTimeInterface $updateTime): void
-    {
-        $this->updateTime = $updateTime;
-    }
-
-    public function getUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->updateTime;
+        return $this->getId() ? "{$this->getQueryName()} ({$this->getQueryType()})" : '';
     }
 }

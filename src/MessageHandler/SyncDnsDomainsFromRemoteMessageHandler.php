@@ -176,7 +176,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
 
                         if ($needUpdate) {
                             $localRecord->setSynced(true); // 设置为已同步
-                            $localRecord->setLastSyncedAt(new \DateTime());
+                            $localRecord->setLastSyncedTime(new \DateTime());
                             $this->entityManager->persist($localRecord);
                             $updateCount++;
 
@@ -209,7 +209,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
                             $newRecord->setTtl($remoteRecord['ttl'] ?? 60);
                             $newRecord->setProxy($remoteRecord['proxied'] ?? false);
                             $newRecord->setSynced(true); // 设置为已同步
-                            $newRecord->setLastSyncedAt(new \DateTime());
+                            $newRecord->setLastSyncedTime(new \DateTime());
 
                             $this->entityManager->persist($newRecord);
                             $createCount++;

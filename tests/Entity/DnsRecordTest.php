@@ -25,7 +25,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals(60, $record->getTtl());
         $this->assertFalse($record->isProxy());
         $this->assertFalse($record->isSynced());
-        $this->assertNull($record->getLastSyncedAt());
+        $this->assertNull($record->getLastSyncedTime());
         $this->assertFalse($record->isSyncing());
         $this->assertNull($record->getCreatedBy());
         $this->assertNull($record->getUpdatedBy());
@@ -140,13 +140,13 @@ class DnsRecordTest extends TestCase
 
         $this->assertSame($record, $result);
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedAt());
+        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
 
         $record->setSynced(false);
         $this->assertFalse($record->isSynced());
     }
 
-    public function test_setSynced_with_true_sets_lastSyncedAt(): void
+    public function test_setSynced_with_true_sets_lastSyncedTime(): void
     {
         $record = new DnsRecord();
         $beforeTime = new \DateTime();
@@ -154,29 +154,29 @@ class DnsRecordTest extends TestCase
         $record->setSynced(true);
 
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedAt());
-        $this->assertGreaterThanOrEqual($beforeTime, $record->getLastSyncedAt());
+        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
+        $this->assertGreaterThanOrEqual($beforeTime, $record->getLastSyncedTime());
     }
 
-    public function test_setLastSyncedAt_and_getLastSyncedAt(): void
+    public function test_setLastSyncedTime_and_getLastSyncedTime(): void
     {
         $record = new DnsRecord();
-        $lastSyncedAt = new \DateTime('2023-01-01 12:00:00');
+        $lastSyncedTime = new \DateTime('2023-01-01 12:00:00');
 
-        $result = $record->setLastSyncedAt($lastSyncedAt);
+        $result = $record->setLastSyncedTime($lastSyncedTime);
 
         $this->assertSame($record, $result);
-        $this->assertSame($lastSyncedAt, $record->getLastSyncedAt());
+        $this->assertSame($lastSyncedTime, $record->getLastSyncedTime());
     }
 
-    public function test_setLastSyncedAt_with_null(): void
+    public function test_setLastSyncedTime_with_null(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setLastSyncedAt(null);
+        $result = $record->setLastSyncedTime(null);
 
         $this->assertSame($record, $result);
-        $this->assertNull($record->getLastSyncedAt());
+        $this->assertNull($record->getLastSyncedTime());
     }
 
     public function test_setSyncing_and_isSyncing(): void
@@ -339,7 +339,7 @@ class DnsRecordTest extends TestCase
         $updatedBy = 'admin';
         $createTime = new \DateTime('2023-06-01 10:00:00');
         $updateTime = new \DateTime('2023-06-01 15:00:00');
-        $lastSyncedAt = new \DateTime('2023-06-01 14:00:00');
+        $lastSyncedTime = new \DateTime('2023-06-01 14:00:00');
 
         $record->setDomain($domain)
             ->setType($type)
@@ -353,7 +353,7 @@ class DnsRecordTest extends TestCase
             ->setUpdatedBy($updatedBy);
         $record->setCreateTime($createTime);
         $record->setUpdateTime($updateTime);
-        $record->setLastSyncedAt($lastSyncedAt);
+        $record->setLastSyncedTime($lastSyncedTime);
         $record->setSynced($synced);
 
         $this->assertSame($domain, $record->getDomain());
@@ -371,6 +371,7 @@ class DnsRecordTest extends TestCase
         $this->assertSame($updateTime, $record->getUpdateTime());
         $this->assertEquals('mail.test.com', $record->getFullName());
         $this->assertEquals('(mail)', (string) $record);
+        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
     }
 
     public function test_edge_case_with_empty_strings(): void
@@ -456,7 +457,7 @@ class DnsRecordTest extends TestCase
         // 初始状态
         $this->assertFalse($record->isSynced());
         $this->assertFalse($record->isSyncing());
-        $this->assertNull($record->getLastSyncedAt());
+        $this->assertNull($record->getLastSyncedTime());
 
         // 开始同步
         $record->setSyncing(true);
@@ -468,7 +469,7 @@ class DnsRecordTest extends TestCase
         $record->setSynced(true);
         $this->assertFalse($record->isSyncing());
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedAt());
+        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
     }
 
     public function test_all_dns_record_type_enum_values(): void

@@ -4,6 +4,7 @@ namespace CloudflareDnsBundle\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Enum\DomainStatus;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -94,7 +95,18 @@ class DomainSynchronizer
 
         // 更新域名其他信息
         if (isset($detailData['status'])) {
-            $domain->setStatus($detailData['status']);
+            // 尝试转换字符串状态为枚举
+            $statusString = $detailData['status'];
+            $statusEnum = null;
+            foreach (DomainStatus::cases() as $case) {
+                if ($case->value === $statusString) {
+                    $statusEnum = $case;
+                    break;
+                }
+            }
+            if ($statusEnum) {
+                $domain->setStatus($statusEnum);
+            }
         }
 
         if (isset($detailData['created_at'])) {
@@ -102,11 +114,11 @@ class DomainSynchronizer
         }
 
         if (isset($detailData['expires_at'])) {
-            $domain->setExpiresAt(new \DateTime($detailData['expires_at']));
+            $domain->setExpiresTime(new \DateTime($detailData['expires_at']));
         }
 
         if (isset($detailData['locked_until'])) {
-            $domain->setLockedUntil(new \DateTime($detailData['locked_until']));
+            $domain->setLockedUntilTime(new \DateTime($detailData['locked_until']));
         }
 
         if (isset($detailData['auto_renew'])) {

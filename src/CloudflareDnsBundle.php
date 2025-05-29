@@ -12,6 +12,7 @@ class CloudflareDnsBundle extends Bundle implements BundleDependencyInterface
         return [
             \Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle::class => ['all' => true],
             \Tourze\DoctrineUserBundle\DoctrineUserBundle::class => ['all' => true],
+            \Tourze\DoctrineTrackBundle\DoctrineTrackBundle::class => ['all' => true],
         ];
     }
 }

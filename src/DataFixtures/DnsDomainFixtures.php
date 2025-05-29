@@ -4,6 +4,7 @@ namespace CloudflareDnsBundle\DataFixtures;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Enum\DomainStatus;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -26,9 +27,9 @@ class DnsDomainFixtures extends Fixture implements DependentFixtureInterface, Fi
         $exampleDomain->setName('example.com');
         $exampleDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_API_KEY_REFERENCE, IamKey::class));
         $exampleDomain->setZoneId('zone123456789');
-        $exampleDomain->setStatus('active');
-        $exampleDomain->setExpiresAt(new \DateTime('+1 year'));
-        $exampleDomain->setLockedUntil(new \DateTime('+6 months'));
+        $exampleDomain->setStatus(DomainStatus::ACTIVE);
+        $exampleDomain->setExpiresTime(new \DateTime('+1 year'));
+        $exampleDomain->setLockedUntilTime(new \DateTime('+6 months'));
         $exampleDomain->setAutoRenew(true);
         $exampleDomain->setValid(true);
 
@@ -39,9 +40,9 @@ class DnsDomainFixtures extends Fixture implements DependentFixtureInterface, Fi
         $testDomain->setName('test.com');
         $testDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_DNS_KEY_REFERENCE, IamKey::class));
         $testDomain->setZoneId('zone987654321');
-        $testDomain->setStatus('active');
-        $testDomain->setExpiresAt(new \DateTime('+2 years'));
-        $testDomain->setLockedUntil(new \DateTime('+3 months'));
+        $testDomain->setStatus(DomainStatus::ACTIVE);
+        $testDomain->setExpiresTime(new \DateTime('+2 years'));
+        $testDomain->setLockedUntilTime(new \DateTime('+3 months'));
         $testDomain->setAutoRenew(true);
         $testDomain->setValid(true);
 
@@ -52,9 +53,9 @@ class DnsDomainFixtures extends Fixture implements DependentFixtureInterface, Fi
         $demoDomain->setName('demo.com');
         $demoDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_DNS_KEY_REFERENCE, IamKey::class));
         $demoDomain->setZoneId('zone111222333');
-        $demoDomain->setStatus('pending');
-        $demoDomain->setExpiresAt(new \DateTime('+6 months'));
-        $demoDomain->setLockedUntil(null);
+        $demoDomain->setStatus(DomainStatus::PENDING);
+        $demoDomain->setExpiresTime(new \DateTime('+6 months'));
+        $demoDomain->setLockedUntilTime(null);
         $demoDomain->setAutoRenew(false);
         $demoDomain->setValid(true);
 

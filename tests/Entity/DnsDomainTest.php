@@ -6,6 +6,7 @@ use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Enum\DnsRecordType;
+use CloudflareDnsBundle\Enum\DomainStatus;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,8 +23,8 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getName());
         $this->assertNull($domain->getZoneId());
         $this->assertNull($domain->getStatus());
-        $this->assertNull($domain->getExpiresAt());
-        $this->assertNull($domain->getLockedUntil());
+        $this->assertNull($domain->getExpiresTime());
+        $this->assertNull($domain->getLockedUntilTime());
         $this->assertFalse($domain->isAutoRenew());
         $this->assertEmpty($domain->getRecords());
         $this->assertFalse($domain->isValid());
@@ -180,7 +181,7 @@ class DnsDomainTest extends TestCase
     public function test_setStatus_and_getStatus(): void
     {
         $domain = new DnsDomain();
-        $status = 'active';
+        $status = DomainStatus::ACTIVE;
 
         $result = $domain->setStatus($status);
 
@@ -198,46 +199,46 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getStatus());
     }
 
-    public function test_setExpiresAt_and_getExpiresAt(): void
+    public function test_setExpiresTime_and_getExpiresTime(): void
     {
         $domain = new DnsDomain();
-        $expiresAt = new \DateTime('2024-12-31');
+        $expiresTime = new \DateTime('2024-12-31');
 
-        $result = $domain->setExpiresAt($expiresAt);
+        $result = $domain->setExpiresTime($expiresTime);
 
         $this->assertSame($domain, $result);
-        $this->assertSame($expiresAt, $domain->getExpiresAt());
+        $this->assertSame($expiresTime, $domain->getExpiresTime());
     }
 
-    public function test_setExpiresAt_with_null(): void
+    public function test_setExpiresTime_with_null(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setExpiresAt(null);
+        $result = $domain->setExpiresTime(null);
 
         $this->assertSame($domain, $result);
-        $this->assertNull($domain->getExpiresAt());
+        $this->assertNull($domain->getExpiresTime());
     }
 
-    public function test_setLockedUntil_and_getLockedUntil(): void
+    public function test_setLockedUntilTime_and_getLockedUntilTime(): void
     {
         $domain = new DnsDomain();
-        $lockedUntil = new \DateTime('2024-06-30');
+        $lockedUntilTime = new \DateTime('2024-06-30');
 
-        $result = $domain->setLockedUntil($lockedUntil);
+        $result = $domain->setLockedUntilTime($lockedUntilTime);
 
         $this->assertSame($domain, $result);
-        $this->assertSame($lockedUntil, $domain->getLockedUntil());
+        $this->assertSame($lockedUntilTime, $domain->getLockedUntilTime());
     }
 
-    public function test_setLockedUntil_with_null(): void
+    public function test_setLockedUntilTime_with_null(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setLockedUntil(null);
+        $result = $domain->setLockedUntilTime(null);
 
         $this->assertSame($domain, $result);
-        $this->assertNull($domain->getLockedUntil());
+        $this->assertNull($domain->getLockedUntilTime());
     }
 
     public function test_setAutoRenew_and_isAutoRenew(): void
@@ -381,9 +382,9 @@ class DnsDomainTest extends TestCase
 
         $name = 'test.com';
         $zoneId = 'zone987654321';
-        $status = 'pending';
-        $expiresAt = new \DateTime('2025-01-01');
-        $lockedUntil = new \DateTime('2024-07-01');
+        $status = DomainStatus::PENDING;
+        $expiresTime = new \DateTime('2025-01-01');
+        $lockedUntilTime = new \DateTime('2024-07-01');
         $autoRenew = true;
         $valid = true;
         $createdBy = 'testuser';
@@ -395,8 +396,8 @@ class DnsDomainTest extends TestCase
             ->setName($name)
             ->setZoneId($zoneId)
             ->setStatus($status)
-            ->setExpiresAt($expiresAt)
-            ->setLockedUntil($lockedUntil)
+            ->setExpiresTime($expiresTime)
+            ->setLockedUntilTime($lockedUntilTime)
             ->setAutoRenew($autoRenew)
             ->setValid($valid)
             ->setCreatedBy($createdBy)
@@ -408,8 +409,8 @@ class DnsDomainTest extends TestCase
         $this->assertEquals($name, $domain->getName());
         $this->assertEquals($zoneId, $domain->getZoneId());
         $this->assertEquals($status, $domain->getStatus());
-        $this->assertSame($expiresAt, $domain->getExpiresAt());
-        $this->assertSame($lockedUntil, $domain->getLockedUntil());
+        $this->assertSame($expiresTime, $domain->getExpiresTime());
+        $this->assertSame($lockedUntilTime, $domain->getLockedUntilTime());
         $this->assertTrue($domain->isAutoRenew());
         $this->assertTrue($domain->isValid());
         $this->assertEquals($createdBy, $domain->getCreatedBy());
@@ -434,7 +435,7 @@ class DnsDomainTest extends TestCase
         $domain = new DnsDomain();
         $longName = str_repeat('a', 100) . '.com';
         $longZoneId = str_repeat('b', 60);
-        $longStatus = str_repeat('c', 30);
+        $longStatus = DomainStatus::SUSPENDED;
 
         $domain->setName($longName)
             ->setZoneId($longZoneId)
@@ -450,11 +451,11 @@ class DnsDomainTest extends TestCase
         $domain = new DnsDomain();
         $futureDate = new \DateTime('+10 years');
 
-        $domain->setExpiresAt($futureDate)
-            ->setLockedUntil($futureDate);
+        $domain->setExpiresTime($futureDate)
+            ->setLockedUntilTime($futureDate);
 
-        $this->assertSame($futureDate, $domain->getExpiresAt());
-        $this->assertSame($futureDate, $domain->getLockedUntil());
+        $this->assertSame($futureDate, $domain->getExpiresTime());
+        $this->assertSame($futureDate, $domain->getLockedUntilTime());
     }
 
     public function test_edge_case_with_past_dates(): void
@@ -462,10 +463,10 @@ class DnsDomainTest extends TestCase
         $domain = new DnsDomain();
         $pastDate = new \DateTime('-5 years');
 
-        $domain->setExpiresAt($pastDate)
-            ->setLockedUntil($pastDate);
+        $domain->setExpiresTime($pastDate)
+            ->setLockedUntilTime($pastDate);
 
-        $this->assertSame($pastDate, $domain->getExpiresAt());
-        $this->assertSame($pastDate, $domain->getLockedUntil());
+        $this->assertSame($pastDate, $domain->getExpiresTime());
+        $this->assertSame($pastDate, $domain->getLockedUntilTime());
     }
-} 
+}

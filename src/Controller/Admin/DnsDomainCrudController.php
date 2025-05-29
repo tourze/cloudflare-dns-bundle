@@ -3,6 +3,7 @@
 namespace CloudflareDnsBundle\Controller\Admin;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
+use CloudflareDnsBundle\Enum\DomainStatus;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminAction;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -13,6 +14,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
@@ -55,9 +57,8 @@ class DnsDomainCrudController extends AbstractCrudController
 
     public function configureActions(Actions $actions): Actions
     {
-        $syncRecordsAction = Action::new('syncRecords', '从远程同步解析记录')
+        $syncRecordsAction = Action::new('syncRecords', '同步远程到本地')
             ->setIcon('fa fa-cloud-download-alt')
-            ->setCssClass('btn btn-primary')
             ->linkToCrudAction('syncRecords')
             ->displayIf(static function (DnsDomain $domain): bool {
                 // 只有有效且有Zone ID的域名才能同步解析记录
@@ -90,11 +91,19 @@ class DnsDomainCrudController extends AbstractCrudController
         yield TextField::new('name', '根域名');
         yield TextField::new('zoneId', 'Zone ID');
         yield TextField::new('accountId', 'Account ID');
-        yield TextField::new('status', '状态');
 
-        yield DateTimeField::new('expiresAt', '过期时间')
+        yield ChoiceField::new('status', '状态')
+            ->setChoices(array_combine(
+                array_map(fn($case) => $case->getLabel(), DomainStatus::cases()),
+                DomainStatus::cases()
+            ))
+            ->formatValue(function (DomainStatus $value) {
+                return "<span class=\"badge badge-{$value->getBadge()}\">{$value->getLabel()}</span>";
+            });
+
+        yield DateTimeField::new('expiresTime', '过期时间')
             ->setColumns(6);
-        yield DateTimeField::new('lockedUntil', '锁定截止时间')
+        yield DateTimeField::new('lockedUntilTime', '锁定截止时间')
             ->setColumns(6);
         yield BooleanField::new('autoRenew', '是否自动续费');
 

@@ -2,6 +2,7 @@
 
 namespace CloudflareDnsBundle\Entity;
 
+use CloudflareDnsBundle\Enum\DomainStatus;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,8 +10,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Ignore;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\CreateTimeColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\UpdateTimeColumn;
+use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
 use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
 use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
@@ -20,6 +20,8 @@ use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
 #[ORM\UniqueConstraint(name: 'ims_cloudflare_dns_domain_idx_uniq', columns: ['iam_key_id', 'name'])]
 class DnsDomain implements \Stringable
 {
+    use TimestampableAware;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -37,14 +39,14 @@ class DnsDomain implements \Stringable
     #[ORM\Column(length: 64, nullable: true, options: ['comment' => 'Zone ID'])]
     private ?string $zoneId = null;
 
-    #[ORM\Column(type: Types::STRING, length: 32, nullable: true, options: ['comment' => '状态'])]
-    private ?string $status = null;
+    #[ORM\Column(length: 32, nullable: true, enumType: DomainStatus::class, options: ['comment' => '状态'])]
+    private ?DomainStatus $status = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '过期时间'])]
-    private ?\DateTimeInterface $expiresAt = null;
+    private ?\DateTimeInterface $expiresTime = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '锁定截止时间'])]
-    private ?\DateTimeInterface $lockedUntil = null;
+    private ?\DateTimeInterface $lockedUntilTime = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['comment' => '是否自动续费'])]
     private bool $autoRenew = false;
@@ -65,15 +67,6 @@ class DnsDomain implements \Stringable
     #[UpdatedByColumn]
     #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
     private ?string $updatedBy = null;
-
-    #[IndexColumn]
-    #[CreateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '创建时间'])]
-    private ?\DateTimeInterface $createTime = null;
-
-    #[UpdateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '更新时间'])]
-    private ?\DateTimeInterface $updateTime = null;
 
     public function __construct()
     {
@@ -164,38 +157,38 @@ class DnsDomain implements \Stringable
         return $this->iamKey?->getAccountId();
     }
 
-    public function getStatus(): ?string
+    public function getStatus(): ?DomainStatus
     {
         return $this->status;
     }
 
-    public function setStatus(?string $status): static
+    public function setStatus(?DomainStatus $status): static
     {
         $this->status = $status;
 
         return $this;
     }
 
-    public function getExpiresAt(): ?\DateTimeInterface
+    public function getExpiresTime(): ?\DateTimeInterface
     {
-        return $this->expiresAt;
+        return $this->expiresTime;
     }
 
-    public function setExpiresAt(?\DateTimeInterface $expiresAt): static
+    public function setExpiresTime(?\DateTimeInterface $expiresTime): static
     {
-        $this->expiresAt = $expiresAt;
+        $this->expiresTime = $expiresTime;
 
         return $this;
     }
 
-    public function getLockedUntil(): ?\DateTimeInterface
+    public function getLockedUntilTime(): ?\DateTimeInterface
     {
-        return $this->lockedUntil;
+        return $this->lockedUntilTime;
     }
 
-    public function setLockedUntil(?\DateTimeInterface $lockedUntil): static
+    public function setLockedUntilTime(?\DateTimeInterface $lockedUntilTime): static
     {
-        $this->lockedUntil = $lockedUntil;
+        $this->lockedUntilTime = $lockedUntilTime;
 
         return $this;
     }
@@ -246,25 +239,5 @@ class DnsDomain implements \Stringable
     public function getUpdatedBy(): ?string
     {
         return $this->updatedBy;
-    }
-
-    public function setCreateTime(?\DateTimeInterface $createdAt): void
-    {
-        $this->createTime = $createdAt;
-    }
-
-    public function getCreateTime(): ?\DateTimeInterface
-    {
-        return $this->createTime;
-    }
-
-    public function setUpdateTime(?\DateTimeInterface $updateTime): void
-    {
-        $this->updateTime = $updateTime;
-    }
-
-    public function getUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->updateTime;
     }
 }

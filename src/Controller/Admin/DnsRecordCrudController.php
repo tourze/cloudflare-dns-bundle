@@ -123,7 +123,7 @@ class DnsRecordCrudController extends AbstractCrudController
             ->setHelp('表示该记录是否已同步到Cloudflare')
             ->hideOnForm();
 
-        yield DateTimeField::new('lastSyncedAt', '最后同步时间')
+        yield DateTimeField::new('lastSyncedTime', '最后同步时间')
             ->hideOnForm()
             ->hideOnIndex();
 
