@@ -3,10 +3,8 @@
 namespace CloudflareDnsBundle\Controller\Admin;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
-use CloudflareDnsBundle\Repository\DnsRecordRepository;
-use CloudflareDnsBundle\Service\DnsRecordService;
-use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminAction;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -27,12 +25,10 @@ use Symfony\Component\Messenger\MessageBusInterface;
 /**
  * 域名管理控制器
  */
+#[AdminCrud(routePath: '/cf-dns/domain', routeName: 'cf_dns_domain')]
 class DnsDomainCrudController extends AbstractCrudController
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly DnsRecordRepository $recordRepository,
-        private readonly DnsRecordService $dnsService,
         private readonly AdminUrlGenerator $adminUrlGenerator,
         private readonly LoggerInterface $logger,
         private readonly MessageBusInterface $messageBus,

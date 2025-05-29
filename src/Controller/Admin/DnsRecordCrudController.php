@@ -7,6 +7,7 @@ use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Service\DnsRecordService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminAction;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -31,6 +32,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * DNS记录管理控制器
  */
+#[AdminCrud(routePath: '/cf-dns/record', routeName: 'cf_dns_record')]
 class DnsRecordCrudController extends AbstractCrudController
 {
     public function __construct(
@@ -63,7 +65,6 @@ class DnsRecordCrudController extends AbstractCrudController
     {
         $syncAction = Action::new('syncToRemote', '同步到远程')
             ->setIcon('fa fa-cloud-upload')
-            ->setCssClass('btn btn-secondary')
             ->linkToCrudAction('syncToRemote')
             ->displayIf(static function (DnsRecord $record): bool {
                 // 只有域名有zoneId才能同步

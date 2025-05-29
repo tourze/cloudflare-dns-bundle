@@ -3,6 +3,7 @@
 namespace CloudflareDnsBundle\Controller\Admin;
 
 use CloudflareDnsBundle\Entity\DnsAnalytics;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -19,6 +20,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 /**
  * DNS统计分析控制器
  */
+#[AdminCrud(routePath: '/cf-dns/analytics', routeName: 'cf_dns_analytics')]
 class DnsAnalyticsCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string

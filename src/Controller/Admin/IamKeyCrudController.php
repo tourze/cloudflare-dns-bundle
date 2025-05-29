@@ -7,6 +7,7 @@ use CloudflareDnsBundle\Service\DomainBatchSynchronizer;
 use CloudflareDnsBundle\Service\DomainSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminAction;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -25,6 +26,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * IAM密钥管理控制器
  */
+#[AdminCrud(routePath: '/cf-dns/key', routeName: 'cf_dns_key')]
 class IamKeyCrudController extends AbstractCrudController
 {
     public function __construct(
