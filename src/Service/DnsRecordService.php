@@ -8,7 +8,7 @@ use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
-final class DnsRecordService extends BaseCloudflareService
+class DnsRecordService extends BaseCloudflareService
 {
     public function __construct(
         LoggerInterface $logger,

@@ -31,7 +31,7 @@ class SyncDomainRecordToRemoteCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('dnsRecordId', InputArgument::REQUIRED, 'DNS本地记录ID')
+            ->addArgument('dnsRecordId', InputArgument::OPTIONAL, 'DNS本地记录ID')
             ->addOption('all', 'a', InputOption::VALUE_NONE, '同步所有未同步的记录');
     }
 
@@ -44,8 +44,14 @@ class SyncDomainRecordToRemoteCommand extends Command
             return $this->syncAllRecords($io);
         }
 
-        // 同步单个记录
+        // 如果没有提供recordId且没有--all选项，显示错误
         $recordId = $input->getArgument('dnsRecordId');
+        if (!$recordId) {
+            $io->error('请提供DNS记录ID或使用--all选项同步所有未同步的记录');
+            return Command::FAILURE;
+        }
+
+        // 同步单个记录
         $record = $this->recordRepository->find($recordId);
 
         if (!$record) {

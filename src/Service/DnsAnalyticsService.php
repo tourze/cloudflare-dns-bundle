@@ -5,7 +5,7 @@ namespace CloudflareDnsBundle\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
-final class DnsAnalyticsService extends BaseCloudflareService
+class DnsAnalyticsService extends BaseCloudflareService
 {
     /**
      * 获取DNS分析报告
