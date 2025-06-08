@@ -90,7 +90,7 @@ class CloudflareDnsBundleTest extends TestCase
         $dependencies = CloudflareDnsBundle::getBundleDependencies();
         
         // 验证依赖数量符合预期
-        $this->assertCount(3, $dependencies);
+        $this->assertCount(4, $dependencies);
     }
 
     public function test_bundle_name_convention(): void

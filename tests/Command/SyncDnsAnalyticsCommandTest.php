@@ -126,10 +126,10 @@ class SyncDnsAnalyticsCommandTest extends TestCase
 
         $this->dnsService->expects($this->once())
             ->method('getDnsAnalytics')
-            ->with($domain, $this->callback(function($params) {
-                return $params['since'] === '-48h' && 
-                       $params['until'] === '-24h' && 
-                       $params['time_delta'] === '2h';
+            ->with($domain, $this->callback(function ($params) {
+                return $params['since'] === '-48h' &&
+                    $params['until'] === '-24h' &&
+                    $params['time_delta'] === '2h';
             }))
             ->willReturn(['success' => true, 'data' => []]);
 
@@ -278,7 +278,7 @@ class SyncDnsAnalyticsCommandTest extends TestCase
     {
         $domain1 = $this->createDnsDomain();
         $domain1->setName('example1.com');
-        
+
         $domain2 = $this->createDnsDomain();
         $domain2->setName('example2.com');
 
@@ -372,4 +372,4 @@ class SyncDnsAnalyticsCommandTest extends TestCase
 
         return $domain;
     }
-} 
+}
