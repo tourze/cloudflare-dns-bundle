@@ -123,7 +123,7 @@ class SyncDnsAnalyticsCommand extends Command
                             'status' => $status
                         ]);
                     }
-                } catch (\Throwable $e) {
+                } catch  (\Throwable $e) {
                     $this->logger->warning("获取域名详情失败，但将继续尝试获取分析数据", [
                         'domain' => $domain->getName(),
                         'error' => $e->getMessage()
@@ -180,7 +180,7 @@ class SyncDnsAnalyticsCommand extends Command
 
                 $successCount++;
 
-            } catch (\Throwable $e) {
+            } catch  (\Throwable $e) {
                 $errorCount++;
                 $this->logger->error('同步DNS分析数据失败', [
                     'domain' => $domain->getName(),

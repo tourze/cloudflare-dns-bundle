@@ -126,7 +126,7 @@ class DNSProvider implements DNSProviderInterface
             // 如果配置了立即同步，则同步到远程
             $this->syncToRemoteIfNeeded($record);
 
-        } catch (\Throwable $e) {
+        } catch  (\Throwable $e) {
             $this->logger->error('处理DDNS请求失败', [
                 'domain' => $domainName,
                 'ip' => $ipAddress,
@@ -239,7 +239,7 @@ class DNSProvider implements DNSProviderInterface
                     'record' => $record->getFullName(),
                 ]);
             }
-        } catch (\Throwable $e) {
+        } catch  (\Throwable $e) {
             $this->logger->error('将DNS记录加入同步队列失败', [
                 'record' => $record->getFullName(),
                 'error' => $e->getMessage(),

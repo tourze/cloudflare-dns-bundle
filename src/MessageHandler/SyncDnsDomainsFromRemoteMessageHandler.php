@@ -227,7 +227,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
                             $skipCount++;
                         }
                     }
-                } catch (\Throwable $e) {
+                } catch  (\Throwable $e) {
                     $this->logger->error('处理DNS记录时出错', [
                         'record' => $remoteRecord['name'] ?? 'unknown',
                         'error' => $e->getMessage(),

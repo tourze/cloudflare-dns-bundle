@@ -149,7 +149,7 @@ class DnsDomainCrudController extends AbstractCrudController
                 '已将域名 [%s] 的解析记录同步请求加入处理队列，稍后将自动处理', 
                 $domain->getName()
             ));
-        } catch (\Throwable $e) {
+        } catch  (\Throwable $e) {
             $this->logger->error('将DNS记录同步请求加入队列时发生错误', [
                 'domain' => $domain->getName(),
                 'error' => $e->getMessage(),

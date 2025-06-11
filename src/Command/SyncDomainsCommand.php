@@ -87,7 +87,7 @@ class SyncDomainsCommand extends Command
             $io->success(sprintf('同步完成，成功: %d，失败: %d，跳过: %d', $syncCount, $errorCount, $skippedCount));
 
             return Command::SUCCESS;
-        } catch (\Throwable $e) {
+        } catch  (\Throwable $e) {
             $io->error(sprintf('同步域名时发生错误: %s', $e->getMessage()));
             return Command::FAILURE;
         }
