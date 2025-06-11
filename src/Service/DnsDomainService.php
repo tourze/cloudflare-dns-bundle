@@ -68,7 +68,7 @@ class DnsDomainService extends BaseCloudflareService
             ]);
 
             return null;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('查询Zone ID失败', [
                 'domain' => $domain->getName(),
                 'error' => $e->getMessage(),
