@@ -151,7 +151,7 @@ class IamKeyCrudController extends AbstractCrudController
                     // 保存域名
                     $this->entityManager->persist($domain);
                     $syncCount++;
-                } catch  (\Throwable $e) {
+                } catch (\Throwable $e) {
                     $this->logger->error('同步域名失败', [
                         'domainName' => $domainData['name'] ?? 'unknown',
                         'error' => $e->getMessage()
@@ -165,7 +165,7 @@ class IamKeyCrudController extends AbstractCrudController
 
             $this->addFlash('success', sprintf('域名同步完成，成功: %d，失败: %d，跳过: %d', $syncCount, $errorCount, $skippedCount));
 
-        } catch  (\Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('同步域名时发生错误', [
                 'iamKey' => $iamKey->getName(),
                 'error' => $e->getMessage(),

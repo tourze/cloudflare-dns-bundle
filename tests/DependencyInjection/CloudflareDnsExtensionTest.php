@@ -67,7 +67,7 @@ class CloudflareDnsExtensionTest extends TestCase
         
         try {
             $this->extension->load([], $this->container);
-        } catch  (\Throwable $e) {
+        } catch (\Throwable $e) {
             // 如果抛出异常，可能是因为services.yaml文件不存在
             // 这在测试环境中是正常的
             $this->assertStringContainsString('services.yaml', $e->getMessage());
@@ -86,7 +86,7 @@ class CloudflareDnsExtensionTest extends TestCase
         
         try {
             $this->extension->load($configs, $this->container);
-        } catch  (\Throwable $e) {
+        } catch (\Throwable $e) {
             // 如果抛出异常，可能是因为services.yaml文件不存在
             // 这在测试环境中是正常的
             $this->assertStringContainsString('services.yaml', $e->getMessage());

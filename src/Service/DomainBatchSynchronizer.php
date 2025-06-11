@@ -148,7 +148,7 @@ class DomainBatchSynchronizer
                 // 保存域名
                 $this->entityManager->persist($domain);
                 $syncCount++;
-            } catch  (\Throwable $e) {
+            } catch (\Throwable $e) {
                 $io->error(sprintf('同步域名 %s 失败: %s', $domainData['name'] ?? 'unknown', $e->getMessage()));
                 $this->logger->error('同步域名失败', [
                     'domainName' => $domainData['name'] ?? 'unknown',

@@ -206,7 +206,7 @@ class DnsRecordCrudController extends AbstractCrudController
 
             $this->addFlash('success', sprintf('DNS记录 %s 同步成功', $record->getFullName()));
 
-        } catch  (\Throwable $e) {
+        } catch (\Throwable $e) {
             $record->setSyncing(false);
             $this->entityManager->flush();
 
