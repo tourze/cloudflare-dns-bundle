@@ -195,7 +195,7 @@ class DnsAnalyticsTest extends TestCase
     public function test_setCreateTime_and_getCreateTime(): void
     {
         $analytics = new DnsAnalytics();
-        $createTime = new \DateTime('2023-01-01 10:00:00');
+        $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
 
         $analytics->setCreateTime($createTime);
 
@@ -214,7 +214,7 @@ class DnsAnalyticsTest extends TestCase
     public function test_setUpdateTime_and_getUpdateTime(): void
     {
         $analytics = new DnsAnalytics();
-        $updateTime = new \DateTime('2023-01-01 11:00:00');
+        $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
 
         $analytics->setUpdateTime($updateTime);
 
@@ -241,8 +241,8 @@ class DnsAnalyticsTest extends TestCase
         $queryCount = 2500;
         $responseTimeAvg = 18.75;
         $statTime = new \DateTime('2023-06-15 14:30:00');
-        $createTime = new \DateTime('2023-06-15 14:00:00');
-        $updateTime = new \DateTime('2023-06-15 15:00:00');
+        $createTime = new \DateTimeImmutable('2023-06-15 14:00:00');
+        $updateTime = new \DateTimeImmutable('2023-06-15 15:00:00');
 
         $analytics->setDomain($domain)
             ->setQueryName($queryName)

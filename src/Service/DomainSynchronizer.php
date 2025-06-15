@@ -110,7 +110,7 @@ class DomainSynchronizer
         }
 
         if (isset($detailData['created_at'])) {
-            $domain->setCreateTime(new \DateTime($detailData['created_at']));
+            $domain->setCreateTime(new \DateTimeImmutable($detailData['created_at']));
         }
 
         if (isset($detailData['expires_at'])) {

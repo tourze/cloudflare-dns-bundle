@@ -237,7 +237,7 @@ class DnsRecordTest extends TestCase
     public function test_setCreateTime_and_getCreateTime(): void
     {
         $record = new DnsRecord();
-        $createTime = new \DateTime('2023-01-01 10:00:00');
+        $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
 
         $record->setCreateTime($createTime);
 
@@ -256,7 +256,7 @@ class DnsRecordTest extends TestCase
     public function test_setUpdateTime_and_getUpdateTime(): void
     {
         $record = new DnsRecord();
-        $updateTime = new \DateTime('2023-01-01 11:00:00');
+        $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
 
         $record->setUpdateTime($updateTime);
 
@@ -337,8 +337,8 @@ class DnsRecordTest extends TestCase
         $syncing = false;
         $createdBy = 'testuser';
         $updatedBy = 'admin';
-        $createTime = new \DateTime('2023-06-01 10:00:00');
-        $updateTime = new \DateTime('2023-06-01 15:00:00');
+        $createTime = new \DateTimeImmutable('2023-06-01 10:00:00');
+        $updateTime = new \DateTimeImmutable('2023-06-01 15:00:00');
         $lastSyncedTime = new \DateTime('2023-06-01 14:00:00');
 
         $record->setDomain($domain)

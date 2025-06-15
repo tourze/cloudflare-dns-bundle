@@ -223,7 +223,7 @@ class IamKeyTest extends TestCase
     public function test_setCreateTime_and_getCreateTime(): void
     {
         $iamKey = new IamKey();
-        $createTime = new \DateTime('2023-01-01 10:00:00');
+        $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
 
         $iamKey->setCreateTime($createTime);
 
@@ -242,7 +242,7 @@ class IamKeyTest extends TestCase
     public function test_setUpdateTime_and_getUpdateTime(): void
     {
         $iamKey = new IamKey();
-        $updateTime = new \DateTime('2023-01-01 11:00:00');
+        $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
 
         $iamKey->setUpdateTime($updateTime);
 
@@ -307,8 +307,8 @@ class IamKeyTest extends TestCase
         $valid = true;
         $createdBy = 'system';
         $updatedBy = 'admin';
-        $createTime = new \DateTime('2023-06-01 10:00:00');
-        $updateTime = new \DateTime('2023-06-01 15:00:00');
+        $createTime = new \DateTimeImmutable('2023-06-01 10:00:00');
+        $updateTime = new \DateTimeImmutable('2023-06-01 15:00:00');
 
         $iamKey->setName($name)
             ->setAccessKey($accessKey)

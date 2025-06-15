@@ -315,7 +315,7 @@ class DnsDomainTest extends TestCase
     public function test_setCreateTime_and_getCreateTime(): void
     {
         $domain = new DnsDomain();
-        $createTime = new \DateTime('2023-01-01 10:00:00');
+        $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
 
         $domain->setCreateTime($createTime);
 
@@ -334,7 +334,7 @@ class DnsDomainTest extends TestCase
     public function test_setUpdateTime_and_getUpdateTime(): void
     {
         $domain = new DnsDomain();
-        $updateTime = new \DateTime('2023-01-01 11:00:00');
+        $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
 
         $domain->setUpdateTime($updateTime);
 
@@ -389,8 +389,8 @@ class DnsDomainTest extends TestCase
         $valid = true;
         $createdBy = 'testuser';
         $updatedBy = 'admin';
-        $createTime = new \DateTime('2023-06-01 10:00:00');
-        $updateTime = new \DateTime('2023-06-01 15:00:00');
+        $createTime = new \DateTimeImmutable('2023-06-01 10:00:00');
+        $updateTime = new \DateTimeImmutable('2023-06-01 15:00:00');
 
         $domain->setIamKey($iamKey)
             ->setName($name)
