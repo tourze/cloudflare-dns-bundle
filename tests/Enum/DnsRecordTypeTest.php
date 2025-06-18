@@ -81,8 +81,6 @@ class DnsRecordTypeTest extends TestCase
         foreach (DnsRecordType::cases() as $case) {
             $expectedItems[$case->value] = $case->getLabel();
         }
-        
-        $this->assertIsArray($expectedItems);
         $this->assertCount(6, $expectedItems);
         
         // 检查key-value结构
@@ -111,8 +109,6 @@ class DnsRecordTypeTest extends TestCase
                 'label' => $case->getLabel(),
             ];
         }
-        
-        $this->assertIsArray($expectedOptions);
         $this->assertCount(6, $expectedOptions);
         
         // 检查选项格式
@@ -139,7 +135,6 @@ class DnsRecordTypeTest extends TestCase
     {
         foreach (DnsRecordType::cases() as $case) {
             $label = $case->getLabel();
-            $this->assertIsString($label);
             $this->assertNotEmpty($label);
             $this->assertStringContainsString('记录', $label);
         }

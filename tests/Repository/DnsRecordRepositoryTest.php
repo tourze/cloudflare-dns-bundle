@@ -9,18 +9,14 @@ use PHPUnit\Framework\TestCase;
 class DnsRecordRepositoryTest extends TestCase
 {
     public function test_constructor_creates_repository_instance(): void
-    {
-        /** @var ManagerRegistry $registry */
-        $registry = $this->createMock(ManagerRegistry::class);
+    {        $registry = $this->createMock(ManagerRegistry::class);
         $repository = new DnsRecordRepository($registry);
         
         $this->assertInstanceOf(DnsRecordRepository::class, $repository);
     }
 
     public function test_repository_extends_service_entity_repository(): void
-    {
-        /** @var ManagerRegistry $registry */
-        $registry = $this->createMock(ManagerRegistry::class);
+    {        $registry = $this->createMock(ManagerRegistry::class);
         $repository = new DnsRecordRepository($registry);
         
         $this->assertInstanceOf(
@@ -30,9 +26,7 @@ class DnsRecordRepositoryTest extends TestCase
     }
 
     public function test_repository_has_standard_doctrine_methods(): void
-    {
-        /** @var ManagerRegistry $registry */
-        $registry = $this->createMock(ManagerRegistry::class);
+    {        $registry = $this->createMock(ManagerRegistry::class);
         $repository = new DnsRecordRepository($registry);
         
         $expectedMethods = ['find', 'findAll', 'findBy', 'findOneBy'];

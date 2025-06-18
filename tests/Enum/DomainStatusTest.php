@@ -96,8 +96,6 @@ class DomainStatusTest extends TestCase
         foreach (DomainStatus::cases() as $case) {
             $expectedItems[$case->value] = $case->getLabel();
         }
-        
-        $this->assertIsArray($expectedItems);
         $this->assertCount(5, $expectedItems);
         
         // 检查key-value结构
@@ -124,8 +122,6 @@ class DomainStatusTest extends TestCase
                 'label' => $case->getLabel(),
             ];
         }
-        
-        $this->assertIsArray($expectedOptions);
         $this->assertCount(5, $expectedOptions);
         
         // 检查选项格式
@@ -152,7 +148,6 @@ class DomainStatusTest extends TestCase
     {
         foreach (DomainStatus::cases() as $case) {
             $label = $case->getLabel();
-            $this->assertIsString($label);
             $this->assertNotEmpty($label);
         }
     }
@@ -172,7 +167,6 @@ class DomainStatusTest extends TestCase
 
         foreach (DomainStatus::cases() as $case) {
             $badge = $case->getBadge();
-            $this->assertIsString($badge);
             $this->assertContains($badge, $validBadges, "Badge '{$badge}' is not valid for case {$case->name}");
         }
     }

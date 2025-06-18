@@ -130,8 +130,6 @@ class DomainBatchSynchronizerTest extends TestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->service->showSyncPreview($domainsToSync, $iamKey, $output, $io);
-
-        $this->assertIsArray($result);
         $this->assertCount(2, $result);
         
         $outputContent = $output->fetch();
