@@ -42,7 +42,7 @@ class DomainBatchSynchronizer
 
         // 如果有指定域名，先过滤
         $domainsToSync = $domains['result'];
-        if ($specificDomain) {
+        if ($specificDomain !== null) {
             $domainsToSync = array_filter(
                 $domains['result'],
                 fn($domain) => $domain['name'] === $specificDomain
@@ -75,8 +75,8 @@ class DomainBatchSynchronizer
                 'iamKey' => $iamKey,
             ]);
 
-            $status = $existingDomain ? '更新' : '新增';
-            $currentZoneId = $existingDomain ? ($existingDomain->getZoneId() ?: '未设置') : '未设置';
+            $status = $existingDomain !== null ? '更新' : '新增';
+            $currentZoneId = $existingDomain !== null ? ($existingDomain->getZoneId() ?: '未设置') : '未设置';
             $newZoneId = $domain['id'] ?? '未知';
             $syncPreview[] = [
                 $domain['name'],
@@ -111,7 +111,7 @@ class DomainBatchSynchronizer
         if (!$force && !$dryRun) {
             $question = new ConfirmationQuestion('确认进行同步操作? (y/n) ', false);
 
-            if (!$io->askQuestion($question)) {
+            if ($io->askQuestion($question) === false) {
                 $io->info('操作已取消');
                 return false;
             }

@@ -144,7 +144,10 @@ class AdminMenuTest extends TestCase
 
     public function test_service_is_callable(): void
     {
-        $this->assertTrue(is_callable($this->service));
+        // Verify the service implements __invoke method
+        $reflection = new \ReflectionClass($this->service);
+        $this->assertTrue($reflection->hasMethod('__invoke'));
+        $this->assertTrue($reflection->getMethod('__invoke')->isPublic());
     }
 
     public function test_constructor_sets_dependencies(): void

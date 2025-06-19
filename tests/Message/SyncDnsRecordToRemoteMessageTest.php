@@ -120,7 +120,7 @@ class SyncDnsRecordToRemoteMessageTest extends TestCase
         
         $this->assertCount(1, $parameters);
         $this->assertEquals('dnsRecordId', $parameters[0]->getName());
-        $this->assertEquals('int', $parameters[0]->getType()->getName());
+        $this->assertEquals('int', (string) $parameters[0]->getType());
     }
 
     public function test_getter_method_return_type(): void
@@ -128,7 +128,7 @@ class SyncDnsRecordToRemoteMessageTest extends TestCase
         $reflection = new \ReflectionClass(SyncDnsRecordToRemoteMessage::class);
         $method = $reflection->getMethod('getDnsRecordId');
         
-        $this->assertEquals('int', $method->getReturnType()->getName());
+        $this->assertEquals('int', (string) $method->getReturnType());
         $this->assertTrue($method->isPublic());
     }
 
@@ -187,8 +187,9 @@ class SyncDnsRecordToRemoteMessageTest extends TestCase
         $this->assertEquals($recordId, $recordMessage->getDnsRecordId());
         
         // 确保这个类有正确的方法名（不是getDomainId）
-        $this->assertTrue(method_exists($recordMessage, 'getDnsRecordId'));
-        $this->assertFalse(method_exists($recordMessage, 'getDomainId'));
+        $reflection = new \ReflectionClass($recordMessage);
+        $this->assertTrue($reflection->hasMethod('getDnsRecordId'));
+        $this->assertFalse($reflection->hasMethod('getDomainId'));
     }
 
     public function test_message_construction_with_edge_cases(): void
@@ -221,7 +222,8 @@ class SyncDnsRecordToRemoteMessageTest extends TestCase
         $this->assertTrue($property->isReadOnly());
         
         // 确保没有setter方法
-        $this->assertFalse(method_exists($message, 'setDnsRecordId'));
+        $messageReflection = new \ReflectionClass($message);
+        $this->assertFalse($messageReflection->hasMethod('setDnsRecordId'));
     }
 
     public function test_object_comparison(): void

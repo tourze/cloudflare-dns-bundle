@@ -120,7 +120,7 @@ class SyncDnsDomainsFromRemoteMessageTest extends TestCase
         
         $this->assertCount(1, $parameters);
         $this->assertEquals('domainId', $parameters[0]->getName());
-        $this->assertEquals('int', $parameters[0]->getType()->getName());
+        $this->assertEquals('int', (string) $parameters[0]->getType());
     }
 
     public function test_getter_method_return_type(): void
@@ -128,7 +128,7 @@ class SyncDnsDomainsFromRemoteMessageTest extends TestCase
         $reflection = new \ReflectionClass(SyncDnsDomainsFromRemoteMessage::class);
         $method = $reflection->getMethod('getDomainId');
         
-        $this->assertEquals('int', $method->getReturnType()->getName());
+        $this->assertEquals('int', (string) $method->getReturnType());
         $this->assertTrue($method->isPublic());
     }
 

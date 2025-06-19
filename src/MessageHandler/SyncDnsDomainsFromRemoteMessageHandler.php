@@ -33,14 +33,14 @@ class SyncDnsDomainsFromRemoteMessageHandler
         $domainId = $message->getDomainId();
         $domain = $this->domainRepository->find($domainId);
 
-        if (!$domain) {
+        if ($domain === null) {
             $this->logger->warning('找不到要同步的域名', [
                 'domainId' => $domainId,
             ]);
             return;
         }
 
-        if (!$domain->isValid() || !$domain->getZoneId()) {
+        if (!$domain->isValid() || $domain->getZoneId() === null || $domain->getZoneId() === '') {
             $this->logger->warning('域名无效或缺少Zone ID，无法同步', [
                 'domain' => $domain->getName(),
                 'valid' => $domain->isValid(),
@@ -110,7 +110,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
                 $key = $record->getType()->value . '_' . $record->getRecord();
                 $localRecordMap[$key] = $record;
 
-                if ($record->getRecordId()) {
+                if ($record->getRecordId() !== null && $record->getRecordId() !== '') {
                     $localRecordByCloudflareId[$record->getRecordId()] = $record;
                 }
             }
@@ -152,7 +152,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
                         $needUpdate = false;
 
                         // 更新记录ID（可能在本地已有记录但没有ID的情况）
-                        if (!$localRecord->getRecordId() && $recordId) {
+                        if (($localRecord->getRecordId() === null || $localRecord->getRecordId() === '') && $recordId !== '') {
                             $localRecord->setRecordId($recordId);
                             $needUpdate = true;
                         }
@@ -199,7 +199,7 @@ class SyncDnsDomainsFromRemoteMessageHandler
                             }
                         }
 
-                        if ($enumType) {
+                        if ($enumType !== null) {
                             $newRecord = new DnsRecord();
                             $newRecord->setDomain($domain);
                             $newRecord->setType($enumType);

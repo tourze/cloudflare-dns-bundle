@@ -28,15 +28,15 @@ class IamKeyService
     {
         $iamKey = $this->iamKeyRepository->find($iamKeyId);
 
-        if (!$iamKey) {
-            if ($io) {
+        if ($iamKey === null) {
+            if ($io !== null) {
                 $io->error(sprintf('找不到 IAM Key: %s', $iamKeyId));
             }
             return null;
         }
 
         if (!$iamKey->isValid()) {
-            if ($io) {
+            if ($io !== null) {
                 $io->error(sprintf('IAM Key %s 未激活', $iamKeyId));
             }
             return null;
@@ -55,13 +55,13 @@ class IamKeyService
     public function validateAccountId(IamKey $iamKey, ?SymfonyStyle $io = null): bool
     {
         if (null === $iamKey->getAccountId()) {
-            if ($io) {
+            if ($io !== null) {
                 $io->error('IamKey中未设置Account ID，请在IAM Key中设置Account ID');
             }
             return false;
         }
 
-        if ($io) {
+        if ($io !== null) {
             $io->info(sprintf('使用 IAM Key 中的 Account ID: %s', $iamKey->getAccountId()));
         }
 

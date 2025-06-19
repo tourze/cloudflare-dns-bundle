@@ -28,7 +28,7 @@ class SyncDnsRecordToRemoteMessageHandler
         $recordId = $message->getDnsRecordId();
         $record = $this->recordRepository->find($recordId);
 
-        if (!$record) {
+        if ($record === null) {
             $this->logger->warning('找不到要同步的DNS记录', [
                 'recordId' => $recordId,
             ]);
@@ -49,7 +49,7 @@ class SyncDnsRecordToRemoteMessageHandler
             $domain = $record->getDomain();
 
             // 如果没记录ID，那么我们试试搜索
-            if (!$record->getRecordId()) {
+            if ($record->getRecordId() === null) {
                 $response = $this->dnsService->listRecords($domain, [
                     'type' => $record->getType()->value,
                     'name' => "{$record->getRecord()}.{$domain->getName()}",
@@ -62,7 +62,7 @@ class SyncDnsRecordToRemoteMessageHandler
             }
 
             // 还是没有，我们尝试创建
-            if (!$record->getRecordId()) {
+            if ($record->getRecordId() === null) {
                 $result = $this->dnsService->createRecord($domain, $record);
                 $this->logger->info('DNS记录创建结果', [
                     'result' => $result,

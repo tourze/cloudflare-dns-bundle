@@ -21,7 +21,7 @@ class DnsRecordService extends BaseCloudflareService
     {
         $tmp = explode('.', $name, 2);
         $domain = $this->domainRepository->findOneBy(['name' => $tmp[1]]);
-        if (!$domain) {
+        if ($domain === null) {
             $this->logger->error('发现一个未托管的域名', [
                 'domain' => $name,
             ]);

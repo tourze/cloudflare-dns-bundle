@@ -46,11 +46,11 @@ class DnsRecord implements \Stringable
 
     #[TrackColumn]
     #[ORM\Column(options: ['comment' => 'TTL'])]
-    private ?int $ttl = 60;
+    private int $ttl = 60;
 
     #[TrackColumn]
     #[ORM\Column(options: ['comment' => '是否代理'])]
-    private ?bool $proxy = false;
+    private bool $proxy = false;
 
     #[IndexColumn]
     #[TrackColumn]
@@ -132,7 +132,7 @@ class DnsRecord implements \Stringable
         return $this;
     }
 
-    public function getTtl(): ?int
+    public function getTtl(): int
     {
         return $this->ttl;
     }
@@ -144,7 +144,7 @@ class DnsRecord implements \Stringable
         return $this;
     }
 
-    public function isProxy(): ?bool
+    public function isProxy(): bool
     {
         return $this->proxy;
     }

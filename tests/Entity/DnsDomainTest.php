@@ -26,7 +26,7 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getExpiresTime());
         $this->assertNull($domain->getLockedUntilTime());
         $this->assertFalse($domain->isAutoRenew());
-        $this->assertEmpty($domain->getRecords());
+        $this->assertCount(0, $domain->getRecords());
         $this->assertFalse($domain->isValid());
         $this->assertNull($domain->getCreatedBy());
         $this->assertNull($domain->getUpdatedBy());

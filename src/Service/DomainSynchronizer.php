@@ -33,10 +33,8 @@ class DomainSynchronizer
             // 获取域名列表
             $result = $this->dnsDomainService->listDomains($domain);
 
-            $found = false;
             foreach ($result['result'] as $item) {
                 if ($item['name'] === $domain->getName()) {
-                    $found = true;
                     // 获取域名详情
                     $detail = $this->dnsDomainService->getDomain($domain, $item['name']);
                     $detailData = $detail['result'] ?? [];
@@ -53,17 +51,14 @@ class DomainSynchronizer
                 }
             }
 
-            if (!$found) {
-                $this->logger->warning('未在API返回中找到指定域名', [
-                    'domain' => $domain->getName(),
-                ]);
+            // 如果未找到域名
+            $this->logger->warning('未在API返回中找到指定域名', [
+                'domain' => $domain->getName(),
+            ]);
 
-                $io?->warning("域名 {$domain->getName()} 在CloudFlare账户中未找到");
+            $io?->warning("域名 {$domain->getName()} 在CloudFlare账户中未找到");
 
-                return false;
-            }
-
-            return true;
+            return false;
         } catch (\Throwable $e) {
             $this->logger->error('同步域名信息失败', [
                 'domain' => $domain->getName(),
@@ -85,7 +80,7 @@ class DomainSynchronizer
         $oldZoneId = $domain->getZoneId();
         $zoneId = $this->dnsDomainService->syncZoneId($domain, $detailData);
 
-        if ($io) {
+        if ($io !== null) {
             if ($zoneId !== null && $oldZoneId !== $zoneId) {
                 $io->text("  更新Zone ID: {$oldZoneId} -> {$zoneId}");
             } elseif ($zoneId === null && $oldZoneId === null) {
@@ -104,7 +99,7 @@ class DomainSynchronizer
                     break;
                 }
             }
-            if ($statusEnum) {
+            if ($statusEnum !== null) {
                 $domain->setStatus($statusEnum);
             }
         }
@@ -142,16 +137,16 @@ class DomainSynchronizer
             'iamKey' => $iamKey,
         ]);
 
-        if (!$existingDomain) {
+        if ($existingDomain === null) {
             // 创建新域名
             $existingDomain = new DnsDomain();
             $existingDomain->setIamKey($iamKey);
             $existingDomain->setName($domainData['name']);
 
-            if ($io) {
+            if ($io !== null) {
                 $io->text(sprintf('新增域名: %s', $domainData['name']));
             }
-        } else if ($io) {
+        } else if ($io !== null) {
             $io->text(sprintf('更新域名: %s', $domainData['name']));
         }
 
@@ -172,7 +167,7 @@ class DomainSynchronizer
      */
     public function findDomains(?string $specificDomain = null): array
     {
-        if ($specificDomain) {
+        if ($specificDomain !== null) {
             return $this->dnsDomainRepository->findBy(['name' => $specificDomain]);
         }
 

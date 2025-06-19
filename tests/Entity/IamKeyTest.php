@@ -20,7 +20,7 @@ class IamKeyTest extends TestCase
         $this->assertNull($iamKey->getAccountId());
         $this->assertNull($iamKey->getSecretKey());
         $this->assertNull($iamKey->getNote());
-        $this->assertEmpty($iamKey->getDomains());
+        $this->assertCount(0, $iamKey->getDomains());
         $this->assertFalse($iamKey->isValid());
         $this->assertNull($iamKey->getCreatedBy());
         $this->assertNull($iamKey->getUpdatedBy());

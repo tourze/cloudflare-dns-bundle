@@ -25,7 +25,9 @@ class CloudflareDnsExtensionTest extends TestCase
 
     public function test_load_method_exists(): void
     {
-        $this->assertTrue(method_exists($this->extension, 'load'));
+        // PHPStan knows the method exists due to the interface, but we keep this test for completeness
+        $reflection = new \ReflectionClass($this->extension);
+        $this->assertTrue($reflection->hasMethod('load'));
     }
 
     public function test_load_accepts_correct_parameters(): void
@@ -124,6 +126,6 @@ class CloudflareDnsExtensionTest extends TestCase
         // 验证返回类型
         $returnType = $reflection->getReturnType();
         $this->assertNotNull($returnType);
-        $this->assertEquals('void', $returnType->getName());
+        $this->assertEquals('void', (string) $returnType);
     }
 } 

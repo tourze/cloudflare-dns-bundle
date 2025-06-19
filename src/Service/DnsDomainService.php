@@ -15,7 +15,7 @@ class DnsDomainService extends BaseCloudflareService
         $client = $this->getCloudFlareClient($domain);
         $accountId = $domain->getAccountId();
 
-        if (!$accountId) {
+        if ($accountId === null) {
             throw new \InvalidArgumentException("没有设置Account ID，请确保IAM Key中已设置Account ID");
         }
 
@@ -32,7 +32,7 @@ class DnsDomainService extends BaseCloudflareService
         $client = $this->getCloudFlareClient($domain);
         $accountId = $domain->getAccountId();
 
-        if (!$accountId) {
+        if ($accountId === null) {
             throw new \InvalidArgumentException("没有设置Account ID，请确保IAM Key中已设置Account ID");
         }
 
@@ -100,13 +100,13 @@ class DnsDomainService extends BaseCloudflareService
         }
 
         // 如果域名已经有zoneId，且没有提供domainData或domainData中没有id，则不处理
-        if ($domain->getZoneId() && ($domainData === null || !isset($domainData['id']))) {
+        if ($domain->getZoneId() !== null && ($domainData === null || !isset($domainData['id']))) {
             return $domain->getZoneId();
         }
 
         // 尝试查询Zone ID
         $zoneId = $this->lookupZoneId($domain);
-        if ($zoneId) {
+        if ($zoneId !== null) {
             $domain->setZoneId($zoneId);
             $this->logger->info('成功查找到Zone ID', [
                 'domain' => $domain->getName(),

@@ -60,7 +60,7 @@ class DNSProvider implements DNSProviderInterface
                 'valid' => true
             ]);
 
-            if ($exists) {
+            if ($exists !== null) {
                 $this->logger->info('域名由Cloudflare管理，将处理DDNS请求', [
                     'domain' => $domainName,
                     'rootDomain' => $domain,
@@ -93,7 +93,7 @@ class DNSProvider implements DNSProviderInterface
         try {
             // 找到根域名
             $rootDomain = $this->findRootDomain($domainName);
-            if (!$rootDomain) {
+            if ($rootDomain === null) {
                 throw new \RuntimeException("找不到匹配的根域名：{$domainName}");
             }
 
@@ -152,7 +152,7 @@ class DNSProvider implements DNSProviderInterface
                 'valid' => true
             ]);
 
-            if ($rootDomain) {
+            if ($rootDomain !== null) {
                 return $rootDomain;
             }
         }
@@ -188,7 +188,7 @@ class DNSProvider implements DNSProviderInterface
         ]);
 
         // 如果不存在，则创建新记录
-        if (!$record) {
+        if ($record === null) {
             $this->logger->info('域名记录不存在，创建新记录', [
                 'domain' => $domain->getName(),
                 'record' => $recordName,
@@ -225,7 +225,7 @@ class DNSProvider implements DNSProviderInterface
             $this->entityManager->flush();
 
             // 创建同步消息并发送到消息队列
-            if ($record->getId()) {
+            if ($record->getId() !== null) {
                 $message = new SyncDnsRecordToRemoteMessage($record->getId());
                 $this->messageBus->dispatch($message);
 

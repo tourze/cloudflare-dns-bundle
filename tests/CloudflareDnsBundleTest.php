@@ -30,7 +30,6 @@ class CloudflareDnsBundleTest extends TestCase
     {
         $dependencies = CloudflareDnsBundle::getBundleDependencies();
         
-        $this->assertIsArray($dependencies);
         $this->assertNotEmpty($dependencies);
     }
 
