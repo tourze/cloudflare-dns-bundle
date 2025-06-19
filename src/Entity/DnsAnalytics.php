@@ -36,7 +36,7 @@ class DnsAnalytics implements \Stringable
     private ?float $responseTimeAvg = 0.0;
 
     #[IndexColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['comment' => '统计时间'])]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['comment' => '统计时间'])]
     private ?\DateTimeInterface $statTime = null;
 
     public function getId(): ?int
@@ -112,6 +112,6 @@ class DnsAnalytics implements \Stringable
 
     public function __toString(): string
     {
-        return $this->getId() ? "{$this->getQueryName()} ({$this->getQueryType()})" : '';
+        return $this->getId() !== null ? "{$this->getQueryName()} ({$this->getQueryType()})" : '';
     }
 }

@@ -17,7 +17,6 @@ class TestDnsRecordService
     private TestHttpResponse $response;
     private bool $success;
     private LoggerInterface $logger;
-    private DnsDomainRepository $repository;
 
     public function __construct(
         LoggerInterface     $logger,
@@ -26,7 +25,6 @@ class TestDnsRecordService
     )
     {
         $this->logger = $logger;
-        $this->repository = $repository;
         $this->success = $success;
         $this->response = new TestHttpResponse($success);
 

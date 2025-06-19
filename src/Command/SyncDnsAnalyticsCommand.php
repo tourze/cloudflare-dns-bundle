@@ -15,7 +15,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: SyncDnsAnalyticsCommand::NAME)]
+#[AsCommand(name: self::NAME, description: '同步 Cloudflare DNS 分析数据')]
 class SyncDnsAnalyticsCommand extends Command
 {
     public const NAME = 'cloudflare:sync-dns-analytics';
@@ -55,7 +55,8 @@ class SyncDnsAnalyticsCommand extends Command
 
         // 域名查询条件
         $criteria = [];
-        if ($domainId = $input->getOption('domain-id')) {
+        $domainId = $input->getOption('domain-id');
+        if ($domainId !== null) {
             $criteria['id'] = $domainId;
         }
 
@@ -95,7 +96,7 @@ class SyncDnsAnalyticsCommand extends Command
                 ]);
 
                 // 检查域名是否有zoneId
-                if (!$domain->getZoneId()) {
+                if ($domain->getZoneId() === null || $domain->getZoneId() === '') {
                     $this->logger->warning("域名没有zoneId，跳过", [
                         'domain' => $domain->getName()
                     ]);
@@ -188,7 +189,7 @@ class SyncDnsAnalyticsCommand extends Command
                     'trace' => $e->getTraceAsString()
                 ]);
 
-                if (!$skipErrors) {
+                if ((bool)$skipErrors === false) {
                     $io->progressFinish();
                     $io->error("处理域名 {$domain->getName()} 时出错: {$e->getMessage()}");
                     return Command::FAILURE;

@@ -281,7 +281,7 @@ class DNSProviderTest extends TestCase
         $this->entityManager->expects($this->exactly(2))
             ->method('persist')
             ->willReturnCallback(function($record) {
-                if ($record instanceof DnsRecord && !$record->getId()) {
+                if ($record instanceof DnsRecord && $record->getId() === null) {
                     // 使用反射设置ID，模拟数据库保存后的状态
                     $reflection = new \ReflectionClass($record);
                     $idProperty = $reflection->getProperty('id');

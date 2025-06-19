@@ -130,7 +130,7 @@ class DnsDomainCrudController extends AbstractCrudController
         }
 
         // 验证域名是否有Zone ID
-        if (!$domain->getZoneId()) {
+        if ($domain->getZoneId() === null || $domain->getZoneId() === '') {
             $this->addFlash('danger', sprintf('域名 [%s] 未设置Zone ID，无法同步解析记录', $domain->getName()));
             return $this->redirect($this->adminUrlGenerator->setAction(Action::DETAIL)->setEntityId($domain->getId())->generateUrl());
         }

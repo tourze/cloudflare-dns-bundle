@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
-    name: SyncDomainRecordToRemoteCommand::NAME,
+    name: self::NAME,
     description: '将DNS记录同步到远程Cloudflare'
 )]
 class SyncDomainRecordToRemoteCommand extends Command
@@ -40,13 +40,13 @@ class SyncDomainRecordToRemoteCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         // 检查是否同步所有记录
-        if ($input->getOption('all')) {
+        if ((bool)$input->getOption('all') === true) {
             return $this->syncAllRecords($io);
         }
 
         // 如果没有提供recordId且没有--all选项，显示错误
         $recordId = $input->getArgument('dnsRecordId');
-        if (!$recordId) {
+        if ($recordId === null || $recordId === '') {
             $io->error('请提供DNS记录ID或使用--all选项同步所有未同步的记录');
             return Command::FAILURE;
         }
@@ -54,7 +54,7 @@ class SyncDomainRecordToRemoteCommand extends Command
         // 同步单个记录
         $record = $this->recordRepository->find($recordId);
 
-        if (!$record) {
+        if ($record === null) {
             $io->error(sprintf('找不到ID为%s的DNS记录', $recordId));
             return Command::FAILURE;
         }

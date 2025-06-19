@@ -82,7 +82,6 @@ class DnsAnalyticsServiceTest extends TestCase
  */
 class TestDnsAnalyticsService
 {
-    private DnsAnalyticsService $service;
     private TestHttpResponse $response;
     private LoggerInterface $logger;
 
@@ -90,7 +89,6 @@ class TestDnsAnalyticsService
     {
         $this->logger = $logger;
         $this->response = $response;
-        $this->service = new DnsAnalyticsService($logger);
     }
 
     /**

@@ -9,8 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
-use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
-use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
+use Tourze\DoctrineUserBundle\Traits\BlameableAware;
 
 #[ORM\Entity(repositoryClass: DnsRecordRepository::class)]
 #[ORM\Table(name: 'ims_cloudflare_dns_record', options: ['comment' => 'CF解析记录'])]
@@ -18,11 +17,12 @@ use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
 class DnsRecord implements \Stringable
 {
     use TimestampableAware;
+    use BlameableAware;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
-    private ?int $id = 0;
+    private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'records')]
     #[ORM\JoinColumn(onDelete: 'CASCADE')]
@@ -30,7 +30,7 @@ class DnsRecord implements \Stringable
 
     #[TrackColumn]
     #[ORM\Column(length: 64, enumType: DnsRecordType::class, options: ['comment' => '记录类型'])]
-    private ?DnsRecordType $type = DnsRecordType::A;
+    private DnsRecordType $type = DnsRecordType::A;
 
     #[TrackColumn]
     #[ORM\Column(type: Types::STRING, length: 64, options: ['comment' => '域名记录'])]
@@ -58,16 +58,9 @@ class DnsRecord implements \Stringable
     private bool $synced = false;
 
     #[TrackColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '最后同步时间'])]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '最后同步时间'])]
     private ?\DateTimeInterface $lastSyncedTime = null;
 
-    #[CreatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
-    private ?string $createdBy = null;
-
-    #[UpdatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
-    private ?string $updatedBy = null;
 
     /**
      * 是否正在同步中,用于防止循环执行
@@ -115,7 +108,7 @@ class DnsRecord implements \Stringable
         return $this;
     }
 
-    public function getType(): ?DnsRecordType
+    public function getType(): DnsRecordType
     {
         return $this->type;
     }
@@ -202,38 +195,14 @@ class DnsRecord implements \Stringable
         return $this;
     }
 
-    public function setCreatedBy(?string $createdBy): static
-    {
-        $this->createdBy = $createdBy;
-
-        return $this;
-    }
-
-    public function getCreatedBy(): ?string
-    {
-        return $this->createdBy;
-    }
-
-    public function setUpdatedBy(?string $updatedBy): static
-    {
-        $this->updatedBy = $updatedBy;
-
-        return $this;
-    }
-
-    public function getUpdatedBy(): ?string
-    {
-        return $this->updatedBy;
-    }
 
     public function __toString(): string
     {
-        $rs = $this->getId() ? $this->getRecord() : '';
-        if ($this->getRecord()) {
-            return "{$rs}({$this->getRecord()})";
+        if ($this->getRecord() !== null) {
+            return "({$this->getRecord()})";
         }
 
-        return $rs;
+        return '';
     }
 
     public function getFullName(): string

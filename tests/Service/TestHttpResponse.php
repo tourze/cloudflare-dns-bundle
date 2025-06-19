@@ -23,7 +23,7 @@ class TestHttpResponse implements ResponseInterface
 
     public function getHeaders(bool $throw = true): array
     {
-        return ['Content-Type' => 'application/json'];
+        return ['Content-Type' => ['application/json']];
     }
 
     public function getContent(bool $throw = true): string

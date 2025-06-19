@@ -154,7 +154,7 @@ class DnsRecordCrudController extends AbstractCrudController
             $domain = $record->getDomain();
 
             // 如果没有记录ID，先尝试查找匹配的记录
-            if (!$record->getRecordId()) {
+            if ($record->getRecordId() === null || $record->getRecordId() === '') {
                 $this->logger->info('尝试查找匹配的DNS记录', [
                     'domain' => $domain->getName(),
                     'record' => $record->getRecord(),
@@ -175,7 +175,7 @@ class DnsRecordCrudController extends AbstractCrudController
             }
 
             // 如果仍然没有记录ID，创建新记录
-            if (!$record->getRecordId()) {
+            if ($record->getRecordId() === null || $record->getRecordId() === '') {
                 $this->logger->info('创建新DNS记录', [
                     'domain' => $domain->getName(),
                     'record' => $record->getRecord(),

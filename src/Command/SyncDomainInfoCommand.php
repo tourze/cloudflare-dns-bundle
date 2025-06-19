@@ -10,7 +10,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: SyncDomainInfoCommand::NAME)]
+#[AsCommand(name: self::NAME, description: '同步域名信息（状态、过期时间、Zone ID等）')]
 class SyncDomainInfoCommand extends Command
 {
     public const NAME = 'cloudflare:sync-domain-info';
@@ -24,7 +24,6 @@ class SyncDomainInfoCommand extends Command
     protected function configure(): void
     {
         $this
-            ->setDescription('同步域名信息（状态、过期时间、Zone ID等）')
             ->addOption('domain', 'd', InputOption::VALUE_OPTIONAL, '只同步指定名称的域名');
     }
 
@@ -37,7 +36,7 @@ class SyncDomainInfoCommand extends Command
         $domains = $this->domainSynchronizer->findDomains($specificDomain);
 
         if (empty($domains)) {
-            if ($specificDomain) {
+            if ($specificDomain !== null) {
                 $io->error(sprintf('未找到指定的域名: %s', $specificDomain));
                 return Command::FAILURE;
             } else {
@@ -46,7 +45,7 @@ class SyncDomainInfoCommand extends Command
             }
         }
 
-        if ($specificDomain) {
+        if ($specificDomain !== null) {
             $io->info(sprintf('只同步域名: %s', $specificDomain));
         } else {
             $io->info(sprintf('同步所有域名，共 %d 个', count($domains)));

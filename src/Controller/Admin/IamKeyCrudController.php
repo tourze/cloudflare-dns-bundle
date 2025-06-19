@@ -119,7 +119,7 @@ class IamKeyCrudController extends AbstractCrudController
         }
 
         // 验证Account ID
-        if (!$iamKey->getAccountId()) {
+        if ($iamKey->getAccountId() === null || $iamKey->getAccountId() === '') {
             $this->addFlash('danger', sprintf('IAM Key [%s] 未设置Account ID，无法同步域名', $iamKey->getName()));
             return $this->redirect($this->adminUrlGenerator->setAction(Action::DETAIL)->setEntityId($iamKey->getId())->generateUrl());
         }

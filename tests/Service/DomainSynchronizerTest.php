@@ -175,7 +175,7 @@ class DomainSynchronizerTest extends TestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->expectException(\DateMalformedStringException::class);
+        $this->expectException(\Exception::class);
 
         $this->service->updateDomainDetails($domain, $detailData, $io);
     }

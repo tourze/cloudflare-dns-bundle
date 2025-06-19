@@ -12,8 +12,7 @@ use Symfony\Component\Serializer\Attribute\Ignore;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
-use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
-use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
+use Tourze\DoctrineUserBundle\Traits\BlameableAware;
 
 #[ORM\Entity(repositoryClass: DnsDomainRepository::class)]
 #[ORM\Table(name: 'ims_cloudflare_dns_domain', options: ['comment' => 'CF域名'])]
@@ -21,6 +20,7 @@ use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
 class DnsDomain implements \Stringable
 {
     use TimestampableAware;
+    use BlameableAware;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -42,10 +42,10 @@ class DnsDomain implements \Stringable
     #[ORM\Column(length: 32, nullable: true, enumType: DomainStatus::class, options: ['comment' => '状态'])]
     private ?DomainStatus $status = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '过期时间'])]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '过期时间'])]
     private ?\DateTimeInterface $expiresTime = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '锁定截止时间'])]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '锁定截止时间'])]
     private ?\DateTimeInterface $lockedUntilTime = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['comment' => '是否自动续费'])]
@@ -60,13 +60,6 @@ class DnsDomain implements \Stringable
     #[ORM\Column(type: Types::BOOLEAN, nullable: true, options: ['comment' => '有效'])]
     private ?bool $valid = false;
 
-    #[CreatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
-    private ?string $createdBy = null;
-
-    #[UpdatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
-    private ?string $updatedBy = null;
 
     public function __construct()
     {
@@ -144,10 +137,6 @@ class DnsDomain implements \Stringable
         return $this;
     }
 
-    public function __toString(): string
-    {
-        return $this->getId() ? $this->getName() : '';
-    }
 
     /**
      * 从关联的IamKey获取AccountId
@@ -217,27 +206,9 @@ class DnsDomain implements \Stringable
         return $this;
     }
 
-    public function setCreatedBy(?string $createdBy): static
+
+    public function __toString(): string
     {
-        $this->createdBy = $createdBy;
-
-        return $this;
-    }
-
-    public function getCreatedBy(): ?string
-    {
-        return $this->createdBy;
-    }
-
-    public function setUpdatedBy(?string $updatedBy): static
-    {
-        $this->updatedBy = $updatedBy;
-
-        return $this;
-    }
-
-    public function getUpdatedBy(): ?string
-    {
-        return $this->updatedBy;
+        return $this->getId() !== null ? $this->getName() ?? '' : '';
     }
 }

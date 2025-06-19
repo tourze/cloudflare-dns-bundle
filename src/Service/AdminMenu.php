@@ -22,7 +22,7 @@ class AdminMenu implements MenuProviderInterface
 
     public function __invoke(ItemInterface $item): void
     {
-        if (!$item->getChild('Cloudflare DNS')) {
+        if ($item->getChild('Cloudflare DNS') === null) {
             $item->addChild('Cloudflare DNS');
         }
 

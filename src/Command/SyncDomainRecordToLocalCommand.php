@@ -16,7 +16,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: SyncDomainRecordToLocalCommand::NAME, description: '同步域名信息到本地')]
+#[AsCommand(name: self::NAME, description: '同步域名信息到本地')]
 class SyncDomainRecordToLocalCommand extends Command
 {
     public const NAME = 'cloudflare:sync-domain-record-to-local';
@@ -62,7 +62,7 @@ class SyncDomainRecordToLocalCommand extends Command
                     'domain' => $domain,
                     'recordId' => $item['id'],
                 ]);
-                if (!$record) {
+                if ($record === null) {
                     $record = new DnsRecord();
                     $record->setDomain($domain);
                     $record->setRecordId($item['id']);
@@ -103,7 +103,8 @@ class SyncDomainRecordToLocalCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if ($id = $input->getArgument('domainId')) {
+        $id = $input->getArgument('domainId');
+        if ($id !== null) {
             $domains = $this->domainRepository->findBy(['id' => $id]);
         } else {
             $domains = $this->domainRepository->findAll();

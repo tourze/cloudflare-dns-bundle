@@ -13,11 +13,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'cloudflare:sync-domains',
+    name: self::NAME,
     description: '同步指定IAM Key ID下的所有域名到本地',
 )]
 class SyncDomainsCommand extends Command
 {
+    public const NAME = 'cloudflare:sync-domains';
+    
     public function __construct(
         private readonly IamKeyService $iamKeyService,
         private readonly DomainBatchSynchronizer $batchSynchronizer,
@@ -40,12 +42,12 @@ class SyncDomainsCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $iamKeyId = $input->getArgument('iamKeyId');
         $specificDomain = $input->getOption('domain');
-        $dryRun = $input->getOption('dry-run');
-        $force = $input->getOption('force');
+        $dryRun = (bool)$input->getOption('dry-run');
+        $force = (bool)$input->getOption('force');
 
         // 查找并验证IAM Key
         $iamKey = $this->iamKeyService->findAndValidateKey($iamKeyId, $io);
-        if (!$iamKey) {
+        if ($iamKey === null) {
             return Command::FAILURE;
         }
 
@@ -56,7 +58,7 @@ class SyncDomainsCommand extends Command
 
         try {
             $io->info(sprintf('正在同步 IAM Key [%s] 的域名...', $iamKey->getName()));
-            if ($specificDomain) {
+            if ($specificDomain !== null) {
                 $io->info(sprintf('只同步域名: %s', $specificDomain));
             }
 
@@ -70,7 +72,7 @@ class SyncDomainsCommand extends Command
             // 过滤域名
             $domainsToSync = $this->batchSynchronizer->filterDomains($domains, $specificDomain, $io);
             if (empty($domainsToSync)) {
-                return $specificDomain ? Command::FAILURE : Command::SUCCESS;
+                return $specificDomain !== null ? Command::FAILURE : Command::SUCCESS;
             }
 
             // 显示同步预览
