@@ -20,6 +20,7 @@ class DomainBatchSynchronizerTest extends TestCase
 {
     private DomainBatchSynchronizer $service;
     private EntityManagerInterface&MockObject $entityManager;
+    private DnsDomainRepository&MockObject $dnsDomainRepository;
     private DnsDomainService&MockObject $dnsDomainService;
     private DomainSynchronizer&MockObject $domainSynchronizer;
     private LoggerInterface&MockObject $logger;
@@ -27,12 +28,14 @@ class DomainBatchSynchronizerTest extends TestCase
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->dnsDomainRepository = $this->createMock(DnsDomainRepository::class);
         $this->dnsDomainService = $this->createMock(DnsDomainService::class);
         $this->domainSynchronizer = $this->createMock(DomainSynchronizer::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->service = new DomainBatchSynchronizer(
             $this->entityManager,
+            $this->dnsDomainRepository,
             $this->dnsDomainService,
             $this->domainSynchronizer,
             $this->logger
@@ -115,14 +118,8 @@ class DomainBatchSynchronizerTest extends TestCase
         ];
 
         $iamKey = $this->createIamKey();
-        $repository = $this->createMock(DnsDomainRepository::class);
         
-        $this->entityManager->expects($this->exactly(2))
-            ->method('getRepository')
-            ->with(DnsDomain::class)
-            ->willReturn($repository);
-        
-        $repository->expects($this->exactly(2))
+        $this->dnsDomainRepository->expects($this->exactly(2))
             ->method('findOneBy')
             ->willReturn(null);
 

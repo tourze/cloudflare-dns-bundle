@@ -322,11 +322,11 @@ class DomainSynchronizerTest extends TestCase
             'id' => 'zone123456',
         ];
 
-        $this->domainRepository->expects($this->once())
-            ->method('findOneBy')
-            ->willReturn(null);
+        $this->domainRepository->expects($this->never())
+            ->method('findOneBy');
 
-        $this->expectException(\TypeError::class);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Domain data must contain a "name" field');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);

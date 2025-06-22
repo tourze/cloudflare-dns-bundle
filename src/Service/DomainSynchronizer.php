@@ -131,6 +131,11 @@ class DomainSynchronizer
      */
     public function createOrUpdateDomain(IamKey $iamKey, array $domainData, ?SymfonyStyle $io = null): DnsDomain
     {
+        // 验证必需的字段
+        if (!isset($domainData['name'])) {
+            throw new \InvalidArgumentException('Domain data must contain a "name" field');
+        }
+        
         // 检查域名是否已存在
         $existingDomain = $this->dnsDomainRepository->findOneBy([
             'name' => $domainData['name'],

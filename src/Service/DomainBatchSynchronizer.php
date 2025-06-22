@@ -4,6 +4,7 @@ namespace CloudflareDnsBundle\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Helper\Table;
@@ -19,6 +20,7 @@ class DomainBatchSynchronizer
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly DnsDomainRepository $dnsDomainRepository,
         private readonly DnsDomainService $dnsDomainService,
         private readonly DomainSynchronizer $domainSynchronizer,
         private readonly LoggerInterface $logger,
@@ -70,7 +72,7 @@ class DomainBatchSynchronizer
     {
         $syncPreview = [];
         foreach ($domainsToSync as $domain) {
-            $existingDomain = $this->entityManager->getRepository(DnsDomain::class)->findOneBy([
+            $existingDomain = $this->dnsDomainRepository->findOneBy([
                 'name' => $domain['name'],
                 'iamKey' => $iamKey,
             ]);
