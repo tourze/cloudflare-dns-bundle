@@ -4,6 +4,7 @@ namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Exception\TestServiceException;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Service\DnsDomainService;
 use CloudflareDnsBundle\Service\DomainBatchSynchronizer;
@@ -118,7 +119,7 @@ class DomainBatchSynchronizerTest extends TestCase
         ];
 
         $iamKey = $this->createIamKey();
-        
+
         $this->dnsDomainRepository->expects($this->exactly(2))
             ->method('findOneBy')
             ->willReturn(null);
@@ -128,7 +129,7 @@ class DomainBatchSynchronizerTest extends TestCase
 
         $result = $this->service->showSyncPreview($domainsToSync, $iamKey, $output, $io);
         $this->assertCount(2, $result);
-        
+
         $outputContent = $output->fetch();
         $this->assertStringContainsString('example.com', $outputContent);
         $this->assertStringContainsString('test.com', $outputContent);
@@ -197,9 +198,9 @@ class DomainBatchSynchronizerTest extends TestCase
 
         $this->domainSynchronizer->expects($this->exactly(2))
             ->method('createOrUpdateDomain')
-            ->willReturnCallback(function($key, $data) use ($domain) {
+            ->willReturnCallback(function ($key, $data) use ($domain) {
                 if ($data['name'] === 'invalid.com') {
-                    throw new \Exception('Sync error');
+                    throw new TestServiceException('Sync error');
                 }
                 return $domain;
             });
@@ -299,4 +300,4 @@ class DomainBatchSynchronizerTest extends TestCase
 
         return $domain;
     }
-} 
+}

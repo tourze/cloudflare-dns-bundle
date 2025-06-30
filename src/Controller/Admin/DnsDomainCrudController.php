@@ -117,7 +117,7 @@ class DnsDomainCrudController extends AbstractCrudController
     /**
      * 从Cloudflare同步域名的DNS解析记录到本地
      */
-    #[AdminAction('{entityId}/syncRecords', 'syncRecords')]
+    #[AdminAction(routePath: '{entityId}/syncRecords', routeName: 'syncRecords')]
     public function syncRecords(AdminContext $context): Response
     {
         /** @var DnsDomain $domain */

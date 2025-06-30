@@ -4,6 +4,7 @@ namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
+use CloudflareDnsBundle\Exception\TestServiceException;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Service\DnsRecordService;
 use Psr\Log\LoggerInterface;
@@ -22,8 +23,7 @@ class TestDnsRecordService
         LoggerInterface     $logger,
         DnsDomainRepository $repository,
         bool                $success = true
-    )
-    {
+    ) {
         $this->logger = $logger;
         $this->success = $success;
         $this->response = new TestHttpResponse($success);
@@ -72,7 +72,7 @@ class TestDnsRecordService
                 'record' => $record,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('创建CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('创建CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('创建CloudFlare域名记录成功', [
@@ -93,7 +93,7 @@ class TestDnsRecordService
                 'record' => $record,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('更新CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('更新CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('更新CloudFlare域名记录成功', ['record' => $record]);
@@ -112,7 +112,7 @@ class TestDnsRecordService
                 'operations' => $operations,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('批量操作CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('批量操作CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('批量操作CloudFlare域名记录成功', [
@@ -141,7 +141,7 @@ class TestDnsRecordService
                 'domain' => $domain,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('导入CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('导入CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('导入CloudFlare域名记录成功', ['domain' => $domain]);
@@ -159,7 +159,7 @@ class TestDnsRecordService
                 'domain' => $domain,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('扫描CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('扫描CloudFlare域名记录失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('扫描CloudFlare域名记录成功', ['domain' => $domain]);
@@ -178,7 +178,7 @@ class TestDnsRecordService
                 'params' => $params,
                 'errors' => [['code' => 1003, 'message' => 'Invalid access token']]
             ]);
-            throw new \RuntimeException('获取CloudFlare域名记录列表失败: [{"code":1003,"message":"Invalid access token"}]');
+            throw new TestServiceException('获取CloudFlare域名记录列表失败: [{"code":1003,"message":"Invalid access token"}]');
         }
 
         $this->logger->info('获取CloudFlare域名记录列表成功', [

@@ -3,6 +3,7 @@
 namespace CloudflareDnsBundle\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
+use CloudflareDnsBundle\Exception\DnsDomainException;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class DnsDomainService extends BaseCloudflareService
@@ -16,7 +17,7 @@ class DnsDomainService extends BaseCloudflareService
         $accountId = $domain->getAccountId();
 
         if ($accountId === null) {
-            throw new \InvalidArgumentException("没有设置Account ID，请确保IAM Key中已设置Account ID");
+            throw new DnsDomainException("没有设置Account ID，请确保IAM Key中已设置Account ID");
         }
 
         $response = $client->listDomains($accountId);
@@ -33,7 +34,7 @@ class DnsDomainService extends BaseCloudflareService
         $accountId = $domain->getAccountId();
 
         if ($accountId === null) {
-            throw new \InvalidArgumentException("没有设置Account ID，请确保IAM Key中已设置Account ID");
+            throw new DnsDomainException("没有设置Account ID，请确保IAM Key中已设置Account ID");
         }
 
         $response = $client->getDomain($accountId, $domainName);

@@ -5,6 +5,7 @@ namespace CloudflareDnsBundle\Tests\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Exception\TestServiceException;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -148,7 +149,7 @@ class DnsRecordServiceTest extends TestCase
             ->method('error')
             ->with('创建CloudFlare域名记录失败', $this->anything());
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(TestServiceException::class);
         $this->failureService->createRecord($domain, $record);
     }
 

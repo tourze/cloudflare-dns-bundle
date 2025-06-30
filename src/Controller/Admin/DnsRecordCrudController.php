@@ -136,7 +136,7 @@ class DnsRecordCrudController extends AbstractCrudController
     /**
      * 同步DNS记录到远程
      */
-    #[AdminAction('{entityId}/syncToRemote', 'syncToRemote')]
+    #[AdminAction(routePath: '{entityId}/syncToRemote', routeName: 'syncToRemote')]
     public function syncToRemote(AdminContext $context): Response
     {
         /** @var DnsRecord $record */

@@ -5,6 +5,7 @@ namespace CloudflareDnsBundle\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Enum\DomainStatus;
+use CloudflareDnsBundle\Exception\DnsDomainException;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -133,7 +134,7 @@ class DomainSynchronizer
     {
         // 验证必需的字段
         if (!isset($domainData['name'])) {
-            throw new \InvalidArgumentException('Domain data must contain a "name" field');
+            throw new DnsDomainException('Domain data must contain a "name" field');
         }
         
         // 检查域名是否已存在

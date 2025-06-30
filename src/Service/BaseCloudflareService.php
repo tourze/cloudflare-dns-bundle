@@ -3,6 +3,7 @@
 namespace CloudflareDnsBundle\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
+use CloudflareDnsBundle\Exception\CloudflareServiceException;
 use Psr\Log\LoggerInterface;
 
 abstract class BaseCloudflareService
@@ -23,7 +24,7 @@ abstract class BaseCloudflareService
             $this->logger->error($errorMessage, array_merge($context, [
                 'errors' => $result['errors'],
             ]));
-            throw new \RuntimeException($errorMessage . ': ' . json_encode($result['errors']));
+            throw new CloudflareServiceException($errorMessage . ': ' . json_encode($result['errors']));
         }
 
         $this->logger->info(str_replace('失败', '成功', $errorMessage), array_merge($context, [

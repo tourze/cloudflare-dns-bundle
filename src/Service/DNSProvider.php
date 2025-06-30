@@ -5,6 +5,7 @@ namespace CloudflareDnsBundle\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Enum\DnsRecordType;
+use CloudflareDnsBundle\Exception\CloudflareServiceException;
 use CloudflareDnsBundle\Message\SyncDnsRecordToRemoteMessage;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
@@ -94,7 +95,7 @@ class DNSProvider implements DNSProviderInterface
             // 找到根域名
             $rootDomain = $this->findRootDomain($domainName);
             if ($rootDomain === null) {
-                throw new \RuntimeException("找不到匹配的根域名：{$domainName}");
+                throw new CloudflareServiceException("找不到匹配的根域名：{$domainName}");
             }
 
             // 计算子域名记录

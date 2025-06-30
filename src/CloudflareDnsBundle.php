@@ -4,16 +4,20 @@ namespace CloudflareDnsBundle;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Tourze\BundleDependency\BundleDependencyInterface;
+use Tourze\DoctrineIndexedBundle\DoctrineIndexedBundle;
+use Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle;
+use Tourze\DoctrineTrackBundle\DoctrineTrackBundle;
+use Tourze\DoctrineUserBundle\DoctrineUserBundle;
 
 class CloudflareDnsBundle extends Bundle implements BundleDependencyInterface
 {
     public static function getBundleDependencies(): array
     {
         return [
-            \Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle::class => ['all' => true],
-            \Tourze\DoctrineUserBundle\DoctrineUserBundle::class => ['all' => true],
-            \Tourze\DoctrineTrackBundle\DoctrineTrackBundle::class => ['all' => true],
-            \Tourze\DoctrineIndexedBundle\DoctrineIndexedBundle::class => ['all' => true],
+            DoctrineTimestampBundle::class => ['all' => true],
+            DoctrineUserBundle::class => ['all' => true],
+            DoctrineTrackBundle::class => ['all' => true],
+            DoctrineIndexedBundle::class => ['all' => true],
         ];
     }
 }

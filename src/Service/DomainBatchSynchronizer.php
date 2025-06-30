@@ -78,7 +78,7 @@ class DomainBatchSynchronizer
             ]);
 
             $status = $existingDomain !== null ? '更新' : '新增';
-            $currentZoneId = $existingDomain !== null ? ($existingDomain->getZoneId() ?: '未设置') : '未设置';
+            $currentZoneId = $existingDomain !== null ? ($existingDomain->getZoneId() ?? '未设置') : '未设置';
             $newZoneId = $domain['id'] ?? '未知';
             $syncPreview[] = [
                 $domain['name'],

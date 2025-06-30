@@ -106,7 +106,7 @@ class IamKeyCrudController extends AbstractCrudController
     /**
      * 同步IAM密钥下的所有域名
      */
-    #[AdminAction('{entityId}/syncDomains', 'syncDomains')]
+    #[AdminAction(routePath: '{entityId}/syncDomains', routeName: 'syncDomains')]
     public function syncDomains(AdminContext $context): Response
     {
         /** @var IamKey $iamKey */
