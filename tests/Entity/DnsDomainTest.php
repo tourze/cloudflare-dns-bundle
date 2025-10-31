@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Entity;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
@@ -7,14 +9,45 @@ use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Enum\DomainStatus;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitDoctrineEntity\AbstractEntityTestCase;
 
 /**
  * 域名实体测试
+ *
+ * @internal
  */
-class DnsDomainTest extends TestCase
+#[CoversClass(DnsDomain::class)]
+final class DnsDomainTest extends AbstractEntityTestCase
 {
-    public function test_constructor_initializes_default_values(): void
+    protected function createEntity(): object
+    {
+        return new DnsDomain();
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed}>
+     */
+    public static function propertiesProvider(): iterable
+    {
+        $iamKey = new IamKey();
+        $iamKey->setName('Test Key');
+        $iamKey->setAccessKey('test@example.com');
+        $iamKey->setSecretKey('test-secret-key');
+        $iamKey->setAccountId('test-account-id');
+
+        yield 'name' => ['name', 'example.com'];
+        yield 'name empty' => ['name', ''];
+        yield 'zoneId' => ['zoneId', 'test-zone-id'];
+        yield 'zoneId with null' => ['zoneId', null];
+        yield 'zoneId empty' => ['zoneId', ''];
+        yield 'iamKey' => ['iamKey', $iamKey];
+        yield 'iamKey with null' => ['iamKey', null];
+        yield 'status' => ['status', DomainStatus::ACTIVE];
+        yield 'status with null' => ['status', null];
+    }
+
+    public function testConstructorInitializesDefaultValues(): void
     {
         $domain = new DnsDomain();
 
@@ -34,73 +67,67 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getUpdateTime());
     }
 
-    public function test_setName_and_getName(): void
+    public function testSetNameAndGetName(): void
     {
         $domain = new DnsDomain();
         $name = 'example.com';
 
-        $result = $domain->setName($name);
+        $domain->setName($name);
 
-        $this->assertSame($domain, $result);
         $this->assertEquals($name, $domain->getName());
     }
 
-    public function test_setZoneId_and_getZoneId(): void
+    public function testSetZoneIdAndGetZoneId(): void
     {
         $domain = new DnsDomain();
         $zoneId = 'zone123456789';
 
-        $result = $domain->setZoneId($zoneId);
+        $domain->setZoneId($zoneId);
 
-        $this->assertSame($domain, $result);
         $this->assertEquals($zoneId, $domain->getZoneId());
     }
 
-    public function test_setZoneId_with_null(): void
+    public function testSetZoneIdWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setZoneId(null);
+        $domain->setZoneId(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getZoneId());
     }
 
-    public function test_setIamKey_and_getIamKey(): void
+    public function testSetIamKeyAndGetIamKey(): void
     {
         $domain = new DnsDomain();
         $iamKey = new IamKey();
 
-        $result = $domain->setIamKey($iamKey);
+        $domain->setIamKey($iamKey);
 
-        $this->assertSame($domain, $result);
         $this->assertSame($iamKey, $domain->getIamKey());
     }
 
-    public function test_setIamKey_with_null(): void
+    public function testSetIamKeyWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setIamKey(null);
+        $domain->setIamKey(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getIamKey());
     }
 
-    public function test_addRecord_and_getRecords(): void
+    public function testAddRecordAndGetRecords(): void
     {
         $domain = new DnsDomain();
         $record = new DnsRecord();
 
-        $result = $domain->addRecord($record);
+        $domain->addRecord($record);
 
-        $this->assertSame($domain, $result);
         $this->assertCount(1, $domain->getRecords());
         $this->assertTrue($domain->getRecords()->contains($record));
         $this->assertSame($domain, $record->getDomain());
     }
 
-    public function test_addRecord_duplicate_record(): void
+    public function testAddRecordDuplicateRecord(): void
     {
         $domain = new DnsDomain();
         $record = new DnsRecord();
@@ -111,32 +138,30 @@ class DnsDomainTest extends TestCase
         $this->assertCount(1, $domain->getRecords());
     }
 
-    public function test_removeRecord(): void
+    public function testRemoveRecord(): void
     {
         $domain = new DnsDomain();
         $record = new DnsRecord();
         $domain->addRecord($record);
 
-        $result = $domain->removeRecord($record);
+        $domain->removeRecord($record);
 
-        $this->assertSame($domain, $result);
         $this->assertCount(0, $domain->getRecords());
         $this->assertFalse($domain->getRecords()->contains($record));
         $this->assertNull($record->getDomain());
     }
 
-    public function test_removeRecord_not_existing(): void
+    public function testRemoveRecordNotExisting(): void
     {
         $domain = new DnsDomain();
         $record = new DnsRecord();
 
-        $result = $domain->removeRecord($record);
+        $domain->removeRecord($record);
 
-        $this->assertSame($domain, $result);
         $this->assertCount(0, $domain->getRecords());
     }
 
-    public function test_toString_with_name(): void
+    public function testToStringWithName(): void
     {
         $domain = new DnsDomain();
         $domain->setName('example.com');
@@ -145,14 +170,14 @@ class DnsDomainTest extends TestCase
         $this->assertEquals('', (string) $domain);
     }
 
-    public function test_toString_without_name(): void
+    public function testToStringWithoutName(): void
     {
         $domain = new DnsDomain();
 
         $this->assertEquals('', (string) $domain);
     }
 
-    public function test_getAccountId_from_iamKey(): void
+    public function testGetAccountIdFromIamKey(): void
     {
         $domain = new DnsDomain();
         $iamKey = new IamKey();
@@ -162,14 +187,14 @@ class DnsDomainTest extends TestCase
         $this->assertEquals('account123', $domain->getAccountId());
     }
 
-    public function test_getAccountId_without_iamKey(): void
+    public function testGetAccountIdWithoutIamKey(): void
     {
         $domain = new DnsDomain();
 
         $this->assertNull($domain->getAccountId());
     }
 
-    public function test_getAccountId_with_iamKey_without_accountId(): void
+    public function testGetAccountIdWithIamKeyWithoutAccountId(): void
     {
         $domain = new DnsDomain();
         $iamKey = new IamKey();
@@ -178,89 +203,81 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getAccountId());
     }
 
-    public function test_setStatus_and_getStatus(): void
+    public function testSetStatusAndGetStatus(): void
     {
         $domain = new DnsDomain();
         $status = DomainStatus::ACTIVE;
 
-        $result = $domain->setStatus($status);
+        $domain->setStatus($status);
 
-        $this->assertSame($domain, $result);
         $this->assertEquals($status, $domain->getStatus());
     }
 
-    public function test_setStatus_with_null(): void
+    public function testSetStatusWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setStatus(null);
+        $domain->setStatus(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getStatus());
     }
 
-    public function test_setExpiresTime_and_getExpiresTime(): void
+    public function testSetExpiresTimeAndGetExpiresTime(): void
     {
         $domain = new DnsDomain();
         $expiresTime = new \DateTime('2024-12-31');
 
-        $result = $domain->setExpiresTime($expiresTime);
+        $domain->setExpiresTime($expiresTime);
 
-        $this->assertSame($domain, $result);
         $this->assertSame($expiresTime, $domain->getExpiresTime());
     }
 
-    public function test_setExpiresTime_with_null(): void
+    public function testSetExpiresTimeWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setExpiresTime(null);
+        $domain->setExpiresTime(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getExpiresTime());
     }
 
-    public function test_setLockedUntilTime_and_getLockedUntilTime(): void
+    public function testSetLockedUntilTimeAndGetLockedUntilTime(): void
     {
         $domain = new DnsDomain();
         $lockedUntilTime = new \DateTime('2024-06-30');
 
-        $result = $domain->setLockedUntilTime($lockedUntilTime);
+        $domain->setLockedUntilTime($lockedUntilTime);
 
-        $this->assertSame($domain, $result);
         $this->assertSame($lockedUntilTime, $domain->getLockedUntilTime());
     }
 
-    public function test_setLockedUntilTime_with_null(): void
+    public function testSetLockedUntilTimeWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setLockedUntilTime(null);
+        $domain->setLockedUntilTime(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getLockedUntilTime());
     }
 
-    public function test_setAutoRenew_and_isAutoRenew(): void
+    public function testSetAutoRenewAndIsAutoRenew(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setAutoRenew(true);
+        $domain->setAutoRenew(true);
 
-        $this->assertSame($domain, $result);
         $this->assertTrue($domain->isAutoRenew());
 
         $domain->setAutoRenew(false);
         $this->assertFalse($domain->isAutoRenew());
     }
 
-    public function test_setValid_and_isValid(): void
+    public function testSetValidAndIsValid(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setValid(true);
+        $domain->setValid(true);
 
-        $this->assertSame($domain, $result);
         $this->assertTrue($domain->isValid());
 
         $domain->setValid(false);
@@ -270,49 +287,45 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->isValid());
     }
 
-    public function test_setCreatedBy_and_getCreatedBy(): void
+    public function testSetCreatedByAndGetCreatedBy(): void
     {
         $domain = new DnsDomain();
         $createdBy = 'admin';
 
-        $result = $domain->setCreatedBy($createdBy);
+        $domain->setCreatedBy($createdBy);
 
-        $this->assertSame($domain, $result);
         $this->assertEquals($createdBy, $domain->getCreatedBy());
     }
 
-    public function test_setCreatedBy_with_null(): void
+    public function testSetCreatedByWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setCreatedBy(null);
+        $domain->setCreatedBy(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getCreatedBy());
     }
 
-    public function test_setUpdatedBy_and_getUpdatedBy(): void
+    public function testSetUpdatedByAndGetUpdatedBy(): void
     {
         $domain = new DnsDomain();
         $updatedBy = 'admin';
 
-        $result = $domain->setUpdatedBy($updatedBy);
+        $domain->setUpdatedBy($updatedBy);
 
-        $this->assertSame($domain, $result);
         $this->assertEquals($updatedBy, $domain->getUpdatedBy());
     }
 
-    public function test_setUpdatedBy_with_null(): void
+    public function testSetUpdatedByWithNull(): void
     {
         $domain = new DnsDomain();
 
-        $result = $domain->setUpdatedBy(null);
+        $domain->setUpdatedBy(null);
 
-        $this->assertSame($domain, $result);
         $this->assertNull($domain->getUpdatedBy());
     }
 
-    public function test_setCreateTime_and_getCreateTime(): void
+    public function testSetCreateTimeAndGetCreateTime(): void
     {
         $domain = new DnsDomain();
         $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
@@ -322,7 +335,7 @@ class DnsDomainTest extends TestCase
         $this->assertSame($createTime, $domain->getCreateTime());
     }
 
-    public function test_setCreateTime_with_null(): void
+    public function testSetCreateTimeWithNull(): void
     {
         $domain = new DnsDomain();
 
@@ -331,7 +344,7 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getCreateTime());
     }
 
-    public function test_setUpdateTime_and_getUpdateTime(): void
+    public function testSetUpdateTimeAndGetUpdateTime(): void
     {
         $domain = new DnsDomain();
         $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
@@ -341,7 +354,7 @@ class DnsDomainTest extends TestCase
         $this->assertSame($updateTime, $domain->getUpdateTime());
     }
 
-    public function test_setUpdateTime_with_null(): void
+    public function testSetUpdateTimeWithNull(): void
     {
         $domain = new DnsDomain();
 
@@ -350,7 +363,7 @@ class DnsDomainTest extends TestCase
         $this->assertNull($domain->getUpdateTime());
     }
 
-    public function test_complex_scenario_with_multiple_records(): void
+    public function testComplexScenarioWithMultipleRecords(): void
     {
         $domain = new DnsDomain();
         $domain->setName('example.com');
@@ -373,7 +386,7 @@ class DnsDomainTest extends TestCase
         $this->assertSame($domain, $recordCname->getDomain());
     }
 
-    public function test_complex_scenario_with_all_properties(): void
+    public function testComplexScenarioWithAllProperties(): void
     {
         $domain = new DnsDomain();
         $iamKey = new IamKey();
@@ -392,16 +405,16 @@ class DnsDomainTest extends TestCase
         $createTime = new \DateTimeImmutable('2023-06-01 10:00:00');
         $updateTime = new \DateTimeImmutable('2023-06-01 15:00:00');
 
-        $domain->setIamKey($iamKey)
-            ->setName($name)
-            ->setZoneId($zoneId)
-            ->setStatus($status)
-            ->setExpiresTime($expiresTime)
-            ->setLockedUntilTime($lockedUntilTime)
-            ->setAutoRenew($autoRenew)
-            ->setValid($valid)
-            ->setCreatedBy($createdBy)
-            ->setUpdatedBy($updatedBy);
+        $domain->setIamKey($iamKey);
+        $domain->setName($name);
+        $domain->setZoneId($zoneId);
+        $domain->setStatus($status);
+        $domain->setExpiresTime($expiresTime);
+        $domain->setLockedUntilTime($lockedUntilTime);
+        $domain->setAutoRenew($autoRenew);
+        $domain->setValid($valid);
+        $domain->setCreatedBy($createdBy);
+        $domain->setUpdatedBy($updatedBy);
         $domain->setCreateTime($createTime);
         $domain->setUpdateTime($updateTime);
 
@@ -421,7 +434,7 @@ class DnsDomainTest extends TestCase
         $this->assertEquals('', (string) $domain);
     }
 
-    public function test_edge_case_with_empty_string_name(): void
+    public function testEdgeCaseWithEmptyStringName(): void
     {
         $domain = new DnsDomain();
         $domain->setName('');
@@ -430,41 +443,41 @@ class DnsDomainTest extends TestCase
         $this->assertEquals('', (string) $domain);
     }
 
-    public function test_edge_case_with_long_strings(): void
+    public function testEdgeCaseWithLongStrings(): void
     {
         $domain = new DnsDomain();
         $longName = str_repeat('a', 100) . '.com';
         $longZoneId = str_repeat('b', 60);
         $longStatus = DomainStatus::SUSPENDED;
 
-        $domain->setName($longName)
-            ->setZoneId($longZoneId)
-            ->setStatus($longStatus);
+        $domain->setName($longName);
+        $domain->setZoneId($longZoneId);
+        $domain->setStatus($longStatus);
 
         $this->assertEquals($longName, $domain->getName());
         $this->assertEquals($longZoneId, $domain->getZoneId());
         $this->assertEquals($longStatus, $domain->getStatus());
     }
 
-    public function test_edge_case_with_future_dates(): void
+    public function testEdgeCaseWithFutureDates(): void
     {
         $domain = new DnsDomain();
         $futureDate = new \DateTime('+10 years');
 
-        $domain->setExpiresTime($futureDate)
-            ->setLockedUntilTime($futureDate);
+        $domain->setExpiresTime($futureDate);
+        $domain->setLockedUntilTime($futureDate);
 
         $this->assertSame($futureDate, $domain->getExpiresTime());
         $this->assertSame($futureDate, $domain->getLockedUntilTime());
     }
 
-    public function test_edge_case_with_past_dates(): void
+    public function testEdgeCaseWithPastDates(): void
     {
         $domain = new DnsDomain();
         $pastDate = new \DateTime('-5 years');
 
-        $domain->setExpiresTime($pastDate)
-            ->setLockedUntilTime($pastDate);
+        $domain->setExpiresTime($pastDate);
+        $domain->setLockedUntilTime($pastDate);
 
         $this->assertSame($pastDate, $domain->getExpiresTime());
         $this->assertSame($pastDate, $domain->getLockedUntilTime());

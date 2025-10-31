@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\DataFixtures;
 
 use CloudflareDnsBundle\Entity\DnsAnalytics;
@@ -8,23 +10,25 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\DependencyInjection\Attribute\When;
 
 /**
  * DNS分析数据填充
  */
+#[When(env: 'test')]
 class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     public function load(ObjectManager $manager): void
     {
-        $now = new \DateTime();
-        $yesterday = new \DateTime('-1 day');
-        $twoDaysAgo = new \DateTime('-2 days');
+        $now = new \DateTimeImmutable();
+        $yesterday = new \DateTimeImmutable('-1 day');
+        $twoDaysAgo = new \DateTimeImmutable('-2 days');
 
-        // 为example.com创建DNS分析数据
+        // 为google.com创建DNS分析数据
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::EXAMPLE_DOMAIN_REFERENCE, DnsDomain::class),
-            'example.com',
+            'google.com',
             'A',
             1500,
             25.5,
@@ -34,7 +38,7 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::EXAMPLE_DOMAIN_REFERENCE, DnsDomain::class),
-            'www.example.com',
+            'www.google.com',
             'CNAME',
             850,
             18.2,
@@ -44,7 +48,7 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::EXAMPLE_DOMAIN_REFERENCE, DnsDomain::class),
-            'example.com',
+            'google.com',
             'MX',
             320,
             30.1,
@@ -55,7 +59,7 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::EXAMPLE_DOMAIN_REFERENCE, DnsDomain::class),
-            'example.com',
+            'google.com',
             'A',
             1200,
             28.7,
@@ -66,18 +70,18 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::EXAMPLE_DOMAIN_REFERENCE, DnsDomain::class),
-            'example.com',
+            'google.com',
             'A',
             980,
             32.4,
             $twoDaysAgo
         );
 
-        // 为test.com创建DNS分析数据
+        // 为github.com创建DNS分析数据
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::TEST_DOMAIN_REFERENCE, DnsDomain::class),
-            'test.com',
+            'github.com',
             'A',
             750,
             21.3,
@@ -87,7 +91,7 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         $this->createAnalyticsData(
             $manager,
             $this->getReference(DnsDomainFixtures::TEST_DOMAIN_REFERENCE, DnsDomain::class),
-            'test.com',
+            'github.com',
             'TXT',
             120,
             15.8,
@@ -128,7 +132,7 @@ class DnsAnalyticsFixtures extends Fixture implements DependentFixtureInterface,
         string $queryType,
         int $queryCount,
         float $responseTimeAvg,
-        \DateTime $statTime
+        \DateTimeImmutable $statTime,
     ): void {
         $analytics = new DnsAnalytics();
         $analytics->setDomain($domain);

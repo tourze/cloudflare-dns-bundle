@@ -1,61 +1,70 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Service\DnsAnalyticsService;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Psr\Log\LoggerInterface;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
-class DnsAnalyticsServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(DnsAnalyticsService::class)]
+#[RunTestsInSeparateProcesses]
+final class DnsAnalyticsServiceTest extends AbstractIntegrationTestCase
 {
-    /**
-     * @var MockObject&LoggerInterface
-     */
-    private $logger;
-
-    private TestDnsAnalyticsService $service;
-    private TestHttpResponse $response;
-
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        /** @var LoggerInterface&MockObject $logger */
-        $logger = $this->createMock(LoggerInterface::class);
-        $this->logger = $logger;
-
-        $this->response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $this->service = new TestDnsAnalyticsService($this->logger, $this->response);
+        // Tests don't require special setup
     }
 
     public function testGetDnsAnalytics(): void
     {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+
+        // 创建装饰器服务实例
+        $service = new TestDnsAnalyticsService($logger, $response);
+
         $domain = $this->createDnsDomain();
         $params = ['since' => '-6h', 'until' => 'now'];
 
         // 配置 logger 的预期行为
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
-            ->with('获取CloudFlare DNS分析成功', $this->anything());
+            ->with('获取CloudFlare DNS分析成功', self::anything())
+        ;
 
-        $result = $this->service->getDnsAnalytics($domain, $params);
+        $result = $service->getDnsAnalytics($domain, $params);
         $this->assertTrue($result['success']);
     }
 
     public function testGetDnsAnalyticsByTime(): void
     {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+
+        // 创建装饰器服务实例
+        $service = new TestDnsAnalyticsService($logger, $response);
+
         $domain = $this->createDnsDomain();
         $params = ['since' => '-6h', 'until' => 'now', 'time_delta' => '1h'];
 
         // 配置 logger 的预期行为
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
-            ->with('获取CloudFlare DNS分析按时间分组成功', $this->anything());
+            ->with('获取CloudFlare DNS分析按时间分组成功', self::anything())
+        ;
 
-        $result = $this->service->getDnsAnalyticsByTime($domain, $params);
+        $result = $service->getDnsAnalyticsByTime($domain, $params);
         $this->assertTrue($result['success']);
     }
 
@@ -74,46 +83,5 @@ class DnsAnalyticsServiceTest extends TestCase
         $domain->setIamKey($iamKey);
 
         return $domain;
-    }
-}
-
-/**
- * DnsAnalyticsService 的测试装饰器
- */
-class TestDnsAnalyticsService
-{
-    private TestHttpResponse $response;
-    private LoggerInterface $logger;
-
-    public function __construct(LoggerInterface $logger, TestHttpResponse $response)
-    {
-        $this->logger = $logger;
-        $this->response = $response;
-    }
-
-    /**
-     * 获取DNS分析报告
-     */
-    public function getDnsAnalytics(DnsDomain $domain, array $params = []): array
-    {
-        $this->logger->info('获取CloudFlare DNS分析成功', [
-            'domain' => $domain,
-            'params' => $params
-        ]);
-
-        return $this->response->toArray();
-    }
-
-    /**
-     * 获取按时间分组的DNS分析报告
-     */
-    public function getDnsAnalyticsByTime(DnsDomain $domain, array $params = []): array
-    {
-        $this->logger->info('获取CloudFlare DNS分析按时间分组成功', [
-            'domain' => $domain,
-            'params' => $params
-        ]);
-
-        return $this->response->toArray();
     }
 }

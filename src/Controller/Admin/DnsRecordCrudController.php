@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Controller\Admin;
 
+use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Service\DnsRecordService;
@@ -25,15 +28,21 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * DNS记录管理控制器
+ *
+ * @extends AbstractCrudController<DnsRecord>
  */
 #[AdminCrud(routePath: '/cf-dns/record', routeName: 'cf_dns_record')]
-class DnsRecordCrudController extends AbstractCrudController
+#[Autoconfigure(public: true)]
+#[WithMonologChannel(channel: 'cloudflare_dns')]
+final class DnsRecordCrudController extends AbstractCrudController
 {
     public function __construct(
         private readonly DnsRecordService $dnsRecordService,
@@ -58,7 +67,8 @@ class DnsRecordCrudController extends AbstractCrudController
             ->setPageTitle('edit', fn (DnsRecord $record) => sprintf('编辑DNS记录: %s', $record->getFullName()))
             ->setPageTitle('detail', fn (DnsRecord $record) => sprintf('DNS记录详情: %s', $record->getFullName()))
             ->setDefaultSort(['id' => 'DESC'])
-            ->setSearchFields(['id', 'record', 'recordId', 'content']);
+            ->setSearchFields(['id', 'record', 'recordId', 'content'])
+        ;
     }
 
     public function configureActions(Actions $actions): Actions
@@ -68,14 +78,16 @@ class DnsRecordCrudController extends AbstractCrudController
             ->linkToCrudAction('syncToRemote')
             ->displayIf(static function (DnsRecord $record): bool {
                 // 只有域名有zoneId才能同步
-                return $record->getDomain() !== null && $record->getDomain()->getZoneId() !== null;
-            });
+                return null !== $record->getDomain() && null !== $record->getDomain()->getZoneId();
+            })
+        ;
 
         return $actions
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
             ->add(Crud::PAGE_INDEX, $syncAction)
             ->add(Crud::PAGE_DETAIL, $syncAction)
-            ->reorder(Crud::PAGE_INDEX, [Action::DETAIL, 'syncToRemote', Action::EDIT, Action::DELETE]);
+            ->reorder(Crud::PAGE_INDEX, [Action::DETAIL, 'syncToRemote'])
+        ;
     }
 
     public function configureFilters(Filters $filters): Filters
@@ -95,12 +107,13 @@ class DnsRecordCrudController extends AbstractCrudController
                 '未同步' => false,
             ]))
             ->add('createTime')
-            ->add('updateTime');
+            ->add('updateTime')
+        ;
     }
 
     public function configureFields(string $pageName): iterable
     {
-        yield IdField::new('id')->setMaxLength(9999)->onlyOnDetail();
+        yield IdField::new('id', 'ID')->setMaxLength(9999)->onlyOnDetail();
         yield AssociationField::new('domain', '所属根域名');
 
         yield ChoiceField::new('type', '记录类型')
@@ -110,7 +123,8 @@ class DnsRecordCrudController extends AbstractCrudController
             ])
             ->formatValue(function ($value) {
                 return $value instanceof DnsRecordType ? $value->getLabel() : '';
-            });
+            })
+        ;
 
         yield TextField::new('record', '域名记录');
         yield TextField::new('recordId', '记录ID')->hideOnForm()->setHelp('自动生成，不需要手动填写');
@@ -121,16 +135,20 @@ class DnsRecordCrudController extends AbstractCrudController
         yield BooleanField::new('synced', '已同步到远程')
             ->renderAsSwitch(false)
             ->setHelp('表示该记录是否已同步到Cloudflare')
-            ->hideOnForm();
+            ->hideOnForm()
+        ;
 
         yield DateTimeField::new('lastSyncedTime', '最后同步时间')
             ->hideOnForm()
-            ->hideOnIndex();
+            ->hideOnIndex()
+        ;
 
         yield DateTimeField::new('createTime', '创建时间')
-            ->hideOnForm();
+            ->hideOnForm()
+        ;
         yield DateTimeField::new('updateTime', '更新时间')
-            ->hideOnForm();
+            ->hideOnForm()
+        ;
     }
 
     /**
@@ -139,85 +157,144 @@ class DnsRecordCrudController extends AbstractCrudController
     #[AdminAction(routePath: '{entityId}/syncToRemote', routeName: 'syncToRemote')]
     public function syncToRemote(AdminContext $context): Response
     {
-        /** @var DnsRecord $record */
         $record = $context->getEntity()->getInstance();
+        assert($record instanceof DnsRecord);
 
         if ($record->isSyncing()) {
             $this->addFlash('warning', '记录正在同步中，请稍后再试');
-            return $this->redirect($this->adminUrlGenerator->setAction(Action::DETAIL)->setEntityId($record->getId())->generateUrl());
+
+            return $this->redirectToDetail($record);
         }
 
         try {
-            $record->setSyncing(true);
-            $this->entityManager->flush();
-
-            $domain = $record->getDomain();
-
-            // 如果没有记录ID，先尝试查找匹配的记录
-            if ($record->getRecordId() === null || $record->getRecordId() === '') {
-                $this->logger->info('尝试查找匹配的DNS记录', [
-                    'domain' => $domain->getName(),
-                    'record' => $record->getRecord(),
-                ]);
-
-                $response = $this->dnsRecordService->listRecords($domain, [
-                    'type' => $record->getType()->value,
-                    'name' => "{$record->getRecord()}.{$domain->getName()}",
-                ]);
-
-                if (!empty($response['result'])) {
-                    $record->setRecordId($response['result'][0]['id']);
-                    $this->entityManager->flush();
-                    $this->logger->info('找到匹配的DNS记录', [
-                        'recordId' => $record->getRecordId(),
-                    ]);
-                }
-            }
-
-            // 如果仍然没有记录ID，创建新记录
-            if ($record->getRecordId() === null || $record->getRecordId() === '') {
-                $this->logger->info('创建新DNS记录', [
-                    'domain' => $domain->getName(),
-                    'record' => $record->getRecord(),
-                ]);
-
-                $result = $this->dnsRecordService->createRecord($domain, $record);
-
-                if (isset($result['result']['id'])) {
-                    $record->setRecordId($result['result']['id']);
-                    $this->entityManager->flush();
-                    $this->logger->info('DNS记录创建成功', [
-                        'recordId' => $record->getRecordId(),
-                    ]);
-                }
-            } else {
-                // 更新已有记录
-                $this->logger->info('更新DNS记录', [
-                    'recordId' => $record->getRecordId(),
-                ]);
-
-                $this->dnsRecordService->updateRecord($record);
-            }
-
-            // 更新同步状态
-            $record->setSynced(true);
-            $record->setSyncing(false);
-            $this->entityManager->flush();
-
+            $this->performSyncToRemote($record);
             $this->addFlash('success', sprintf('DNS记录 %s 同步成功', $record->getFullName()));
-
         } catch (\Throwable $e) {
-            $record->setSyncing(false);
-            $this->entityManager->flush();
-
-            $this->logger->error('同步DNS记录失败', [
-                'record' => $record->getFullName(),
-                'error' => $e->getMessage(),
-            ]);
-
-            $this->addFlash('danger', sprintf('DNS记录 %s 同步失败: %s', $record->getFullName(), $e->getMessage()));
+            $this->handleSyncError($record, $e);
         }
 
-        return $this->redirect($this->adminUrlGenerator->setAction(Action::DETAIL)->setEntityId($record->getId())->generateUrl());
+        return $this->redirectToDetail($record);
+    }
+
+    private function performSyncToRemote(DnsRecord $record): void
+    {
+        $record->setSyncing(true);
+        $this->entityManager->flush();
+
+        $this->ensureRecordHasId($record);
+        $this->syncRecordToRemote($record);
+        $this->markSyncCompleted($record);
+    }
+
+    private function ensureRecordHasId(DnsRecord $record): void
+    {
+        if (null === $record->getRecordId() || '' === $record->getRecordId()) {
+            $this->findOrCreateRemoteRecord($record);
+        }
+    }
+
+    private function findOrCreateRemoteRecord(DnsRecord $record): void
+    {
+        $domain = $record->getDomain();
+        if (null === $domain) {
+            return;
+        }
+
+        $this->logger->info('尝试查找匹配的DNS记录', [
+            'domain' => $domain->getName(),
+            'record' => $record->getRecord(),
+        ]);
+
+        $response = $this->dnsRecordService->listRecords($domain, [
+            'type' => $record->getType()->value,
+            'name' => "{$record->getRecord()}.{$domain->getName()}",
+        ]);
+
+        if (($response['result'] ?? []) !== []) {
+            $result = $response['result'];
+            if (is_array($result) && isset($result[0]) && is_array($result[0])) {
+                $firstRecord = $result[0];
+                $recordId = $firstRecord['id'] ?? null;
+                if (is_string($recordId)) {
+                    $this->updateRecordId($record, $recordId);
+                }
+            }
+        } else {
+            $this->createNewRecord($record, $domain);
+        }
+    }
+
+    private function updateRecordId(DnsRecord $record, string $recordId): void
+    {
+        $record->setRecordId($recordId);
+        $this->entityManager->flush();
+
+        $this->logger->info('找到匹配的DNS记录', [
+            'recordId' => $record->getRecordId(),
+        ]);
+    }
+
+    private function createNewRecord(DnsRecord $record, DnsDomain $domain): void
+    {
+        $this->logger->info('创建新DNS记录', [
+            'domain' => $domain->getName(),
+            'record' => $record->getRecord(),
+        ]);
+
+        $result = $this->dnsRecordService->createRecord($domain, $record);
+
+        if (isset($result['result']) && is_array($result['result'])) {
+            $resultData = $result['result'];
+            $recordId = $resultData['id'] ?? null;
+            if (is_string($recordId)) {
+                $record->setRecordId($recordId);
+                $this->entityManager->flush();
+
+                $this->logger->info('DNS记录创建成功', [
+                    'recordId' => $record->getRecordId(),
+                ]);
+            }
+        }
+    }
+
+    private function syncRecordToRemote(DnsRecord $record): void
+    {
+        if (null !== $record->getRecordId() && '' !== $record->getRecordId()) {
+            $this->logger->info('更新DNS记录', [
+                'recordId' => $record->getRecordId(),
+            ]);
+
+            $this->dnsRecordService->updateRecord($record);
+        }
+    }
+
+    private function markSyncCompleted(DnsRecord $record): void
+    {
+        $record->setSynced(true);
+        $record->setSyncing(false);
+        $this->entityManager->flush();
+    }
+
+    private function handleSyncError(DnsRecord $record, \Throwable $e): void
+    {
+        $record->setSyncing(false);
+        $this->entityManager->flush();
+
+        $this->logger->error('同步DNS记录失败', [
+            'record' => $record->getFullName(),
+            'error' => $e->getMessage(),
+        ]);
+
+        $this->addFlash('danger', sprintf('DNS记录 %s 同步失败: %s', $record->getFullName(), $e->getMessage()));
+    }
+
+    private function redirectToDetail(DnsRecord $record): Response
+    {
+        return $this->redirect(
+            $this->adminUrlGenerator
+                ->setAction(Action::DETAIL)
+                ->setEntityId($record->getId())
+                ->generateUrl()
+        );
     }
 }

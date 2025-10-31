@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
@@ -10,22 +12,26 @@ use CloudflareDnsBundle\Message\SyncDnsRecordToRemoteMessage;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Tourze\DDNSContracts\DNSProviderInterface;
-use Tourze\DDNSContracts\ExpectResolveResult;
+use Tourze\DDNSContracts\DTO\ExpectResolveResult;
 
 /**
  * Cloudflare DNS提供商，处理DDNS更新请求
  */
-class DNSProvider implements DNSProviderInterface
+#[Autoconfigure(public: true)]
+#[WithMonologChannel(channel: 'cloudflare_dns')]
+readonly class DNSProvider implements DNSProviderInterface
 {
     public function __construct(
-        private readonly DnsDomainRepository $domainRepository,
-        private readonly DnsRecordRepository $recordRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
-        private readonly MessageBusInterface $messageBus,
+        private DnsDomainRepository $domainRepository,
+        private DnsRecordRepository $recordRepository,
+        private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger,
+        private MessageBusInterface $messageBus,
     ) {
     }
 
@@ -49,7 +55,7 @@ class DNSProvider implements DNSProviderInterface
 
         // 从完整域名开始依次检查
         $checkDomains = [];
-        for ($i = 0; $i < count($domainParts) - 1; $i++) {
+        for ($i = 0; $i < count($domainParts) - 1; ++$i) {
             $checkDomain = implode('.', array_slice($domainParts, $i));
             $checkDomains[] = $checkDomain;
         }
@@ -58,14 +64,15 @@ class DNSProvider implements DNSProviderInterface
         foreach ($checkDomains as $domain) {
             $exists = $this->domainRepository->findOneBy([
                 'name' => $domain,
-                'valid' => true
+                'valid' => true,
             ]);
 
-            if ($exists !== null) {
+            if (null !== $exists) {
                 $this->logger->info('域名由Cloudflare管理，将处理DDNS请求', [
                     'domain' => $domainName,
                     'rootDomain' => $domain,
                 ]);
+
                 return true;
             }
         }
@@ -73,6 +80,7 @@ class DNSProvider implements DNSProviderInterface
         $this->logger->debug('域名不由Cloudflare管理，跳过处理', [
             'domain' => $domainName,
         ]);
+
         return false;
     }
 
@@ -94,12 +102,16 @@ class DNSProvider implements DNSProviderInterface
         try {
             // 找到根域名
             $rootDomain = $this->findRootDomain($domainName);
-            if ($rootDomain === null) {
+            if (null === $rootDomain) {
                 throw new CloudflareServiceException("找不到匹配的根域名：{$domainName}");
             }
 
             // 计算子域名记录
-            $recordName = $this->getRecordName($domainName, $rootDomain->getName());
+            $rootDomainName = $rootDomain->getName();
+            if (null === $rootDomainName) {
+                throw new CloudflareServiceException("域名名称为空：{$domainName}");
+            }
+            $recordName = $this->getRecordName($domainName, $rootDomainName);
 
             // 查找是否存在记录
             $record = $this->findOrCreateRecord($rootDomain, $recordName, $ipAddress);
@@ -126,7 +138,6 @@ class DNSProvider implements DNSProviderInterface
 
             // 如果配置了立即同步，则同步到远程
             $this->syncToRemoteIfNeeded($record);
-
         } catch (\Throwable $e) {
             $this->logger->error('处理DDNS请求失败', [
                 'domain' => $domainName,
@@ -145,15 +156,15 @@ class DNSProvider implements DNSProviderInterface
         $domainParts = explode('.', $domainName);
 
         // 从完整域名开始依次检查
-        for ($i = 0; $i < count($domainParts) - 1; $i++) {
+        for ($i = 0; $i < count($domainParts) - 1; ++$i) {
             $checkDomain = implode('.', array_slice($domainParts, $i));
 
             $rootDomain = $this->domainRepository->findOneBy([
                 'name' => $checkDomain,
-                'valid' => true
+                'valid' => true,
             ]);
 
-            if ($rootDomain !== null) {
+            if (null !== $rootDomain) {
                 return $rootDomain;
             }
         }
@@ -185,11 +196,11 @@ class DNSProvider implements DNSProviderInterface
         $record = $this->recordRepository->findOneBy([
             'domain' => $domain,
             'record' => $recordName,
-            'type' => DnsRecordType::A
+            'type' => DnsRecordType::A,
         ]);
 
         // 如果不存在，则创建新记录
-        if ($record === null) {
+        if (null === $record) {
             $this->logger->info('域名记录不存在，创建新记录', [
                 'domain' => $domain->getName(),
                 'record' => $recordName,
@@ -226,7 +237,7 @@ class DNSProvider implements DNSProviderInterface
             $this->entityManager->flush();
 
             // 创建同步消息并发送到消息队列
-            if ($record->getId() !== null) {
+            if (null !== $record->getId()) {
                 $message = new SyncDnsRecordToRemoteMessage($record->getId());
                 $this->messageBus->dispatch($message);
 

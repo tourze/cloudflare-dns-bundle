@@ -1,60 +1,66 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Repository;
 
+use CloudflareDnsBundle\Entity\DnsDomain;
+use CloudflareDnsBundle\Entity\DnsRecord;
+use CloudflareDnsBundle\Entity\IamKey;
+use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
-use Doctrine\Persistence\ManagerRegistry;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractRepositoryTestCase;
 
-class DnsRecordRepositoryTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(DnsRecordRepository::class)]
+#[RunTestsInSeparateProcesses]
+final class DnsRecordRepositoryTest extends AbstractRepositoryTestCase
 {
-    public function test_constructor_creates_repository_instance(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new DnsRecordRepository($registry);
-        
-        $this->assertInstanceOf(DnsRecordRepository::class, $repository);
-    }
+    private DnsRecordRepository $repository;
 
-    public function test_repository_extends_service_entity_repository(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new DnsRecordRepository($registry);
-        
-        $this->assertInstanceOf(
-            \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository::class,
-            $repository
-        );
-    }
-
-    public function test_repository_has_standard_doctrine_methods(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new DnsRecordRepository($registry);
-        
-        $expectedMethods = ['find', 'findAll', 'findBy', 'findOneBy'];
-        
-        foreach ($expectedMethods as $method) {
-            $this->assertTrue(
-                method_exists($repository, $method),
-                "Repository should have method: {$method}"
-            );
-        }
-    }
-
-    public function test_repository_class_structure(): void
+    protected function onSetUp(): void
     {
-        $reflection = new \ReflectionClass(DnsRecordRepository::class);
-        
-        // 验证类继承关系
-        $this->assertTrue($reflection->isSubclassOf(
-            \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository::class
-        ));
-        
-        // 验证构造函数存在
-        $this->assertTrue($reflection->hasMethod('__construct'));
-        
-        $constructor = $reflection->getMethod('__construct');
-        $parameters = $constructor->getParameters();
-        
-        $this->assertCount(1, $parameters);
-        $this->assertEquals('registry', $parameters[0]->getName());
+        $this->repository = self::getService(DnsRecordRepository::class);
     }
-} 
+
+    public function testRepositoryInstance(): void
+    {
+        $this->assertInstanceOf(DnsRecordRepository::class, $this->repository);
+    }
+
+    protected function createNewEntity(): object
+    {
+        $iamKey = new IamKey();
+        $iamKey->setName('Test IAM Key ' . uniqid());
+        $iamKey->setAccessKey('test@example.com');
+        $iamKey->setSecretKey('test-secret-key');
+        $iamKey->setAccountId('test-account-id');
+        $iamKey->setValid(true);
+
+        $domain = new DnsDomain();
+        $domain->setName('test-' . uniqid() . '.com');
+        $domain->setZoneId('test-zone-id-' . uniqid());
+        $domain->setIamKey($iamKey);
+        $domain->setValid(true);
+
+        $record = new DnsRecord();
+        $record->setDomain($domain);
+        $record->setRecord('test');
+        $record->setRecordId('record123-' . uniqid());
+        $record->setType(DnsRecordType::A);
+        $record->setContent('192.168.1.1');
+        $record->setTtl(300);
+        $record->setProxy(false);
+
+        return $record;
+    }
+
+    protected function getRepository(): DnsRecordRepository
+    {
+        return $this->repository;
+    }
+}

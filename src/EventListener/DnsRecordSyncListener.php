@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\EventListener;
 
 use CloudflareDnsBundle\Entity\DnsRecord;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
 /**
  * 监听DNS记录的创建和更新事件，自动设置同步状态
  */
 #[AsEntityListener(event: Events::prePersist, method: 'prePersist', entity: DnsRecord::class)]
 #[AsEntityListener(event: Events::preUpdate, method: 'preUpdate', entity: DnsRecord::class)]
+#[Autoconfigure(public: true)]
 class DnsRecordSyncListener
 {
     /**
@@ -20,7 +24,7 @@ class DnsRecordSyncListener
     public function prePersist(DnsRecord $entity): void
     {
         // 对于新创建的记录，设置为未同步状态
-        if ($entity->getRecordId() === null) {
+        if (null === $entity->getRecordId()) {
             $entity->setSynced(false);
         }
     }

@@ -8,8 +8,6 @@ services:
     resource: '../../Command/'
   CloudflareDnsBundle\Controller\:
     resource: '../../Controller/'
-  CloudflareDnsBundle\DataFixtures\:
-    resource: '../../DataFixtures/'
   CloudflareDnsBundle\EventListener\:
     resource: '../../EventListener/'
   CloudflareDnsBundle\MessageHandler\:

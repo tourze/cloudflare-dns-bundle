@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Entity;
 
 use CloudflareDnsBundle\Enum\DomainStatus;
@@ -9,6 +11,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Ignore;
+use Symfony\Component\Validator\Constraints as Assert;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
@@ -27,30 +30,40 @@ class DnsDomain implements \Stringable
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'domains')]
+    #[ORM\ManyToOne(inversedBy: 'domains', cascade: ['persist'])]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?IamKey $iamKey = null;
 
     #[IndexColumn]
     #[TrackColumn]
     #[ORM\Column(length: 128, unique: true, options: ['comment' => '根域名记录'])]
+    #[Assert\NotBlank(message: '域名不能为空')]
+    #[Assert\Length(max: 128, maxMessage: '域名长度不能超过 {{ limit }} 个字符')]
     private ?string $name = null;
 
     #[ORM\Column(length: 64, nullable: true, options: ['comment' => 'Zone ID'])]
+    #[Assert\Length(max: 64, maxMessage: 'Zone ID长度不能超过 {{ limit }} 个字符')]
     private ?string $zoneId = null;
 
     #[ORM\Column(length: 32, nullable: true, enumType: DomainStatus::class, options: ['comment' => '状态'])]
+    #[Assert\Choice(callback: [DomainStatus::class, 'cases'], message: '请选择有效的域名状态')]
     private ?DomainStatus $status = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '过期时间'])]
+    #[Assert\Type(type: \DateTimeInterface::class, message: '过期时间必须是有效的日期时间')]
     private ?\DateTimeInterface $expiresTime = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '锁定截止时间'])]
+    #[Assert\Type(type: \DateTimeInterface::class, message: '锁定截止时间必须是有效的日期时间')]
     private ?\DateTimeInterface $lockedUntilTime = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['comment' => '是否自动续费'])]
+    #[Assert\Type(type: 'bool', message: '自动续费必须是布尔值')]
     private bool $autoRenew = false;
 
+    /**
+     * @var Collection<int, DnsRecord>
+     */
     #[Ignore]
     #[ORM\OneToMany(targetEntity: DnsRecord::class, mappedBy: 'domain')]
     private Collection $records;
@@ -58,8 +71,8 @@ class DnsDomain implements \Stringable
     #[IndexColumn]
     #[TrackColumn]
     #[ORM\Column(type: Types::BOOLEAN, nullable: true, options: ['comment' => '有效'])]
+    #[Assert\Type(type: 'bool', message: '有效性必须是布尔值')]
     private ?bool $valid = false;
-
 
     public function __construct()
     {
@@ -76,11 +89,9 @@ class DnsDomain implements \Stringable
         return $this->name;
     }
 
-    public function setName(string $name): static
+    public function setName(string $name): void
     {
         $this->name = $name;
-
-        return $this;
     }
 
     public function getZoneId(): ?string
@@ -88,11 +99,9 @@ class DnsDomain implements \Stringable
         return $this->zoneId;
     }
 
-    public function setZoneId(?string $zoneId): static
+    public function setZoneId(?string $zoneId): void
     {
         $this->zoneId = $zoneId;
-
-        return $this;
     }
 
     public function getIamKey(): ?IamKey
@@ -100,11 +109,9 @@ class DnsDomain implements \Stringable
         return $this->iamKey;
     }
 
-    public function setIamKey(?IamKey $iamKey): static
+    public function setIamKey(?IamKey $iamKey): void
     {
         $this->iamKey = $iamKey;
-
-        return $this;
     }
 
     /**
@@ -137,7 +144,6 @@ class DnsDomain implements \Stringable
         return $this;
     }
 
-
     /**
      * 从关联的IamKey获取AccountId
      */
@@ -151,11 +157,9 @@ class DnsDomain implements \Stringable
         return $this->status;
     }
 
-    public function setStatus(?DomainStatus $status): static
+    public function setStatus(?DomainStatus $status): void
     {
         $this->status = $status;
-
-        return $this;
     }
 
     public function getExpiresTime(): ?\DateTimeInterface
@@ -163,11 +167,9 @@ class DnsDomain implements \Stringable
         return $this->expiresTime;
     }
 
-    public function setExpiresTime(?\DateTimeInterface $expiresTime): static
+    public function setExpiresTime(?\DateTimeInterface $expiresTime): void
     {
         $this->expiresTime = $expiresTime;
-
-        return $this;
     }
 
     public function getLockedUntilTime(): ?\DateTimeInterface
@@ -175,11 +177,9 @@ class DnsDomain implements \Stringable
         return $this->lockedUntilTime;
     }
 
-    public function setLockedUntilTime(?\DateTimeInterface $lockedUntilTime): static
+    public function setLockedUntilTime(?\DateTimeInterface $lockedUntilTime): void
     {
         $this->lockedUntilTime = $lockedUntilTime;
-
-        return $this;
     }
 
     public function isAutoRenew(): bool
@@ -187,11 +187,9 @@ class DnsDomain implements \Stringable
         return $this->autoRenew;
     }
 
-    public function setAutoRenew(bool $autoRenew): static
+    public function setAutoRenew(bool $autoRenew): void
     {
         $this->autoRenew = $autoRenew;
-
-        return $this;
     }
 
     public function isValid(): ?bool
@@ -199,16 +197,13 @@ class DnsDomain implements \Stringable
         return $this->valid;
     }
 
-    public function setValid(?bool $valid): self
+    public function setValid(?bool $valid): void
     {
         $this->valid = $valid;
-
-        return $this;
     }
-
 
     public function __toString(): string
     {
-        return $this->getId() !== null ? $this->getName() ?? '' : '';
+        return null !== $this->getId() ? $this->getName() ?? '' : '';
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Controller\Admin;
 
 use CloudflareDnsBundle\Entity\DnsAnalytics;
@@ -16,12 +18,16 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\NumberField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
 /**
  * DNS统计分析控制器
+ *
+ * @extends AbstractCrudController<DnsAnalytics>
  */
 #[AdminCrud(routePath: '/cf-dns/analytics', routeName: 'cf_dns_analytics')]
-class DnsAnalyticsCrudController extends AbstractCrudController
+#[Autoconfigure(public: true)]
+final class DnsAnalyticsCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string
     {
@@ -36,15 +42,17 @@ class DnsAnalyticsCrudController extends AbstractCrudController
             ->setPageTitle('index', 'DNS分析数据列表')
             ->setPageTitle('detail', fn (DnsAnalytics $analytics) => sprintf('DNS分析数据详情: %s', $analytics->getQueryName()))
             ->setDefaultSort(['id' => 'DESC'])
-            ->setSearchFields(['id', 'queryName', 'queryType']);
+            ->setSearchFields(['id', 'queryName', 'queryType'])
+        ;
     }
 
     public function configureActions(Actions $actions): Actions
     {
         return $actions
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
-            ->disable(Crud::PAGE_NEW, Crud::PAGE_EDIT)
-            ->reorder(Crud::PAGE_INDEX, [Action::DETAIL]);
+            ->disable(Action::NEW, Action::EDIT)
+            ->reorder(Crud::PAGE_INDEX, [Action::DETAIL])
+        ;
     }
 
     public function configureFilters(Filters $filters): Filters
@@ -54,21 +62,24 @@ class DnsAnalyticsCrudController extends AbstractCrudController
             ->add('queryName')
             ->add('queryType')
             ->add('statTime')
-            ->add('createTime');
+            ->add('createTime')
+        ;
     }
 
     public function configureFields(string $pageName): iterable
     {
-        yield IdField::new('id')->setMaxLength(9999)->onlyOnDetail();
+        yield IdField::new('id', 'ID')->setMaxLength(9999)->onlyOnDetail();
         yield AssociationField::new('domain', '所属根域名');
         yield TextField::new('queryName', '查询名称');
         yield TextField::new('queryType', '查询类型');
         yield IntegerField::new('queryCount', '查询次数');
         yield NumberField::new('responseTimeAvg', '平均响应时间(ms)')
-            ->setNumDecimals(2);
+            ->setNumDecimals(2)
+        ;
         yield DateTimeField::new('statTime', '统计时间');
         yield DateTimeField::new('createTime', '创建时间');
         yield DateTimeField::new('updateTime', '更新时间')
-            ->hideOnIndex();
+            ->hideOnIndex()
+        ;
     }
 }

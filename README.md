@@ -3,97 +3,317 @@
 [English](README.md) | [中文](README.zh-CN.md)
 
 [![Latest Version](https://img.shields.io/packagist/v/tourze/cloudflare-dns-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/cloudflare-dns-bundle)
-[![Build Status](https://img.shields.io/travis/tourze/cloudflare-dns-bundle/master.svg?style=flat-square)](https://travis-ci.org/tourze/cloudflare-dns-bundle)
-[![Quality Score](https://img.shields.io/scrutinizer/g/tourze/cloudflare-dns-bundle.svg?style=flat-square)](https://scrutinizer-ci.com/g/tourze/cloudflare-dns-bundle)
+[![PHP Version](https://img.shields.io/packagist/php-v/tourze/cloudflare-dns-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/cloudflare-dns-bundle)
+[![License](https://img.shields.io/packagist/l/tourze/cloudflare-dns-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/cloudflare-dns-bundle)
+[![Code Coverage](https://img.shields.io/codecov/c/github/tourze/php-monorepo.svg?style=flat-square)](https://codecov.io/gh/tourze/php-monorepo)
 [![Total Downloads](https://img.shields.io/packagist/dt/tourze/cloudflare-dns-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/cloudflare-dns-bundle)
 
-Cloudflare DNS Bundle is a Symfony bundle for managing Cloudflare DNS, domains, analytics, and IAM keys with full ORM support, CLI tools, and advanced admin features.
+A comprehensive Symfony bundle for managing Cloudflare DNS records, domains, and analytics with full ORM support, CLI tools, and EasyAdmin integration.
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Quick Start](#quick-start)
+  - [1. Add IAM Key](#1-add-iam-key)
+  - [2. Sync Domains](#2-sync-domains)
+  - [3. Manage DNS Records](#3-manage-dns-records)
+  - [4. Analytics](#4-analytics)
+- [Service Usage](#service-usage)
+- [Entities](#entities)
+- [CLI Commands](#cli-commands)
+- [Admin Interface](#admin-interface)
+- [Event System](#event-system)
+- [Advanced Features](#advanced-features)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
-- Manage Cloudflare DNS records and domains via ORM entities
-- Sync DNS/domain/analytics data between Cloudflare and local DB
-- Full CRUD and admin UI support (EasyAdmin attributes)
-- Command-line tools for batch sync, analytics, and import/export
-- IAM key management for multi-account support
-- Extensible service layer for custom business logic
-- Comprehensive test coverage
+- **Complete DNS Management**: Create, update, delete, and sync DNS records with Cloudflare API
+- **Domain Synchronization**: Sync domains between Cloudflare and local database
+- **Analytics Integration**: Fetch and store DNS query analytics data
+- **Multi-Account Support**: Manage multiple Cloudflare accounts with IAM key management
+- **EasyAdmin Integration**: Full CRUD operations with admin UI
+- **Batch Operations**: Support for bulk DNS record operations
+- **CLI Tools**: Comprehensive command-line tools for all operations
+- **Event System**: Pre/post sync events for custom business logic
+- **Audit Trail**: Automatic tracking of created/updated timestamps
 
 ## Installation
+
+### Requirements
+
+- PHP >= 8.1
+- Symfony >= 7.3
+- Doctrine ORM >= 3.0
+- Cloudflare account with API credentials
+
+### Install via Composer
 
 ```bash
 composer require tourze/cloudflare-dns-bundle
 ```
 
-### Requirements
+## Configuration
 
-- PHP >= 8.1
-- Symfony >= 6.4
-- Doctrine ORM >= 2.20
-- Cloudflare account and API credentials
+### Bundle Registration
 
-## Quick Start
-
-1. Register the bundle in your Symfony config (if not auto-discovered):
+The bundle and its dependencies will be automatically registered if using Symfony Flex. Otherwise, add to your `config/bundles.php`:
 
 ```php
 // config/bundles.php
 return [
+    // Dependencies (auto-registered via BundleDependencyInterface)
+    Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle::class => ['all' => true],
+    Tourze\DoctrineUserBundle\DoctrineUserBundle::class => ['all' => true],
+    Tourze\DoctrineTrackBundle\DoctrineTrackBundle::class => ['all' => true],
+    Tourze\DoctrineIndexedBundle\DoctrineIndexedBundle::class => ['all' => true],
+    // Main bundle
     CloudflareDnsBundle\CloudflareDnsBundle::class => ['all' => true],
 ];
 ```
 
-2. Configure your database and run migrations for the provided entities.
+### Database Setup
 
-3. Add your IAM keys and domains via admin UI or directly in the database.
-
-4. Use CLI commands to sync and manage DNS:
-
+1. Update your database schema:
 ```bash
-php bin/console cloudflare:sync-domain-info
-php bin/console cloudflare:sync-domain-record-to-local [domainId]
-php bin/console cloudflare:sync-dns-domain-record <dnsRecordId>
-php bin/console cloudflare:sync-dns-analytics [--since -24h] [--until now] [--time-delta 1h]
-php bin/console cloudflare:sync-domains <iamKeyId> [<accountId>] [--domain=example.com] [--dry-run] [--force]
+php bin/console doctrine:schema:update --force
 ```
 
-5. Use the service layer in your own code:
+2. Load initial data fixtures (optional):
+```bash
+php bin/console doctrine:fixtures:load --group=cf
+```
+
+## Quick Start
+
+### 1. Add IAM Key
+
+First, add your Cloudflare API credentials to the database:
+
+```php
+use CloudflareDnsBundle\Entity\IamKey;
+
+$iamKey = new IamKey();
+$iamKey->setName('Main Account');
+$iamKey->setEmail('your@email.com');
+$iamKey->setAccessKey('your-api-key');
+$iamKey->setAccountId('your-account-id');
+
+$entityManager->persist($iamKey);
+$entityManager->flush();
+```
+
+### 2. Sync Domains
+
+```bash
+# Sync all domains from Cloudflare
+php bin/console cloudflare:sync-domains <iamKeyId>
+
+# Sync specific domain
+php bin/console cloudflare:sync-domains <iamKeyId> --domain=example.com
+```
+
+### 3. Manage DNS Records
+
+```bash
+# Sync DNS records from Cloudflare to local DB
+php bin/console cloudflare:sync-domain-record-to-local <domainId>
+
+# Sync DNS records from local DB to Cloudflare
+php bin/console cloudflare:sync-dns-domain-record-to-remote <dnsRecordId>
+
+# Sync all DNS records for a domain
+php bin/console cloudflare:sync-dns-domain-record-to-remote --all --domain=<domainId>
+```
+
+### 4. Analytics
+
+```bash
+# Sync DNS analytics for last 24 hours
+php bin/console cloudflare:sync-dns-analytics
+
+# Sync analytics for specific time range
+php bin/console cloudflare:sync-dns-analytics --since="2024-01-01" --until="2024-01-31"
+```
+
+## Service Usage
+
+### DNS Record Service
 
 ```php
 use CloudflareDnsBundle\Service\DnsRecordService;
+use CloudflareDnsBundle\Entity\DnsRecord;
+use CloudflareDnsBundle\Enum\DnsRecordType;
 
-// Inject DnsRecordService and use its methods
-$service->listRecords($domain, ['type' => 'A']);
+class MyService
+{
+    public function __construct(
+        private DnsRecordService $dnsRecordService
+    ) {}
+
+    public function createRecord(): void
+    {
+        $record = new DnsRecord();
+        $record->setDomain($domain);
+        $record->setType(DnsRecordType::A);
+        $record->setRecord('subdomain.example.com');
+        $record->setContent('192.168.1.1');
+        $record->setTtl(3600);
+        $record->setProxy(true);
+
+        $this->dnsRecordService->syncToRemote($record);
+    }
+}
 ```
 
-## Documentation
+### Domain Service
 
-- **Entities:** DnsDomain, DnsRecord, IamKey, DnsAnalytics (see `docs/Entity.md`)
-- **CLI Commands:** See `src/Command/` for all available commands
-- **Service Layer:** See `src/Service/` for extensible business logic
-- **Enum Types:** DnsRecordType (A, MX, TXT, CNAME, NS, URI)
-- **Testing:** PHPUnit tests in `tests/Service/`
+```php
+use CloudflareDnsBundle\Service\DnsDomainService;
+
+$domains = $dnsDomainService->syncFromRemote($iamKey);
+foreach ($domains as $domain) {
+    echo $domain->getName() . ' - ' . $domain->getStatus()->value . PHP_EOL;
+}
+```
+
+## Entities
+
+### DnsDomain
+Represents a domain managed in Cloudflare:
+- `name`: Domain name (e.g., example.com)
+- `zoneId`: Cloudflare Zone ID
+- `status`: Domain status (active, pending, etc.)
+- `iamKey`: Associated IAM key
+
+### DnsRecord
+Represents a DNS record:
+- `domain`: Associated domain
+- `type`: Record type (A, AAAA, CNAME, MX, TXT, NS, URI)
+- `record`: Full record name
+- `content`: Record value
+- `ttl`: Time to live
+- `proxy`: Whether Cloudflare proxy is enabled
+- `recordId`: Cloudflare record ID
+
+### IamKey
+Stores Cloudflare API credentials:
+- `name`: Descriptive name
+- `email`: Cloudflare account email
+- `accessKey`: API key
+- `accountId`: Cloudflare account ID
+
+### DnsAnalytics
+Stores DNS query analytics:
+- `domain`: Associated domain
+- `queryCount`: Number of queries
+- `queryName`: Queried hostname
+- `queryType`: DNS query type
+- `responseCode`: DNS response code
+- `datetime`: Analytics timestamp
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `cloudflare:sync-domains` | Sync domains from Cloudflare |
+| `cloudflare:sync-domain-info` | Update domain zone information |
+| `cloudflare:sync-domain-record-to-local` | Sync DNS records from Cloudflare to local DB |
+| `cloudflare:sync-dns-domain-record-to-remote` | Sync DNS records from local DB to Cloudflare |
+| `cloudflare:sync-dns-analytics` | Sync DNS analytics data |
+
+## Admin Interface
+
+The bundle provides EasyAdmin CRUD controllers for all entities:
+
+- **DnsDomainCrudController**: Manage domains
+- **DnsRecordCrudController**: Manage DNS records  
+- **IamKeyCrudController**: Manage API credentials
+- **DnsAnalyticsCrudController**: View analytics data
+
+Access via your EasyAdmin dashboard configuration.
+
+## Event System
+
+The bundle dispatches events during sync operations:
+
+```php
+use CloudflareDnsBundle\EventListener\DnsRecordSyncListener;
+use Doctrine\ORM\Events;
+
+class MyListener
+{
+    public function postPersist($args): void
+    {
+        $entity = $args->getObject();
+        if ($entity instanceof DnsRecord) {
+            // Custom logic after DNS record creation
+        }
+    }
+}
+```
 
 ## Advanced Features
 
-- Batch import/export DNS records (BIND format)
-- Analytics sync and reporting
-- Full audit and tracking (created/updated by, timestamps)
-- Admin UI integration (EasyAdmin attributes)
-- Extensible with your own services and event subscribers
+### Batch Operations
+
+The bundle supports batch operations via the Cloudflare API:
+
+```php
+use CloudflareDnsBundle\Service\CloudflareHttpClient;
+
+$operations = [
+    'posts' => [$newRecord1, $newRecord2],
+    'puts' => [['id' => $recordId, 'record' => $updatedRecord]],
+    'deletes' => [$recordIdToDelete]
+];
+
+$client->batchDnsRecords($zoneId, $operations);
+```
+
+### Message Queue Integration
+
+Async operations are supported via Symfony Messenger:
+
+- `SyncDnsDomainsFromRemoteMessage`: Async domain sync
+- `SyncDnsRecordToRemoteMessage`: Async DNS record sync
+
+### Service Layer Architecture
+
+- **BaseCloudflareService**: Abstract base for all services
+- **DomainSynchronizer**: Handles single domain sync
+- **DomainBatchSynchronizer**: Handles bulk domain operations
+- **CloudflareHttpClient**: Low-level API client with logging
+
+## Testing
+
+The bundle includes comprehensive test coverage:
+
+```bash
+# Run all tests
+vendor/bin/phpunit
+
+# Run specific test suite
+vendor/bin/phpunit tests/Service/
+
+# Run with coverage
+vendor/bin/phpunit --coverage-html coverage/
+```
 
 ## Contributing
 
-Feel free to submit issues or pull requests. Please follow PSR-12 and project code style. Run tests with:
+Contributions are welcome! Please:
 
-```bash
-phpunit
-```
+1. Follow PSR-12 coding standards
+2. Add tests for new features
+3. Update documentation as needed
+4. Submit a pull request
 
 ## License
 
-MIT License. See [LICENSE](../LICENSE).
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for release notes and upgrade guide.
+MIT License. See [LICENSE](LICENSE) for more information.

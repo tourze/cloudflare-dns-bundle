@@ -1,12 +1,12 @@
 <?php
 
-namespace CloudflareDnsBundle\Exception;
+declare(strict_types=1);
 
-use Exception;
+namespace CloudflareDnsBundle\Exception;
 
 /**
  * 测试服务相关异常
  */
-class TestServiceException extends Exception
+class TestServiceException extends \Exception
 {
-} 
+}

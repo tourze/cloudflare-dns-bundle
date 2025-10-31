@@ -1,12 +1,12 @@
 <?php
 
-namespace CloudflareDnsBundle\Exception;
+declare(strict_types=1);
 
-use RuntimeException;
+namespace CloudflareDnsBundle\Exception;
 
 /**
  * Cloudflare服务相关异常
  */
-class CloudflareServiceException extends RuntimeException
+class CloudflareServiceException extends \RuntimeException
 {
-} 
+}

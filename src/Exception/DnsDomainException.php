@@ -1,12 +1,12 @@
 <?php
 
-namespace CloudflareDnsBundle\Exception;
+declare(strict_types=1);
 
-use InvalidArgumentException;
+namespace CloudflareDnsBundle\Exception;
 
 /**
  * DNS域名相关异常
  */
-class DnsDomainException extends InvalidArgumentException
+class DnsDomainException extends \InvalidArgumentException
 {
-} 
+}

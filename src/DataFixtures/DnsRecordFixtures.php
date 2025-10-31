@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\DataFixtures;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
@@ -9,10 +11,12 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\DependencyInjection\Attribute\When;
 
 /**
  * DNS记录数据填充
  */
+#[When(env: 'test')]
 class DnsRecordFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     public function load(ObjectManager $manager): void
@@ -35,7 +39,7 @@ class DnsRecordFixtures extends Fixture implements DependentFixtureInterface, Fi
         $exampleCname->setType(DnsRecordType::CNAME);
         $exampleCname->setRecord('www');
         $exampleCname->setRecordId('record987654321');
-        $exampleCname->setContent('example.com');
+        $exampleCname->setContent('google.com');
         $exampleCname->setTtl(3600);
         $exampleCname->setProxy(true);
 
@@ -47,7 +51,7 @@ class DnsRecordFixtures extends Fixture implements DependentFixtureInterface, Fi
         $exampleMx->setType(DnsRecordType::MX);
         $exampleMx->setRecord('@');
         $exampleMx->setRecordId('record555666777');
-        $exampleMx->setContent('10 mail.example.com');
+        $exampleMx->setContent('10 mail.google.com');
         $exampleMx->setTtl(3600);
         $exampleMx->setProxy(false);
 

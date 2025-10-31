@@ -1,260 +1,300 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\IamKey;
-use CloudflareDnsBundle\Repository\IamKeyRepository;
 use CloudflareDnsBundle\Service\IamKeyService;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
-class IamKeyServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(IamKeyService::class)]
+#[RunTestsInSeparateProcesses]
+final class IamKeyServiceTest extends AbstractIntegrationTestCase
 {
-    private IamKeyService $service;
-    private IamKeyRepository&MockObject $iamKeyRepository;
-
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        $this->iamKeyRepository = $this->createMock(IamKeyRepository::class);
-        $this->service = new IamKeyService($this->iamKeyRepository);
+        // Tests don't require special setup
     }
 
-    public function test_findAndValidateKey_success(): void
+    public function testFindAndValidateKeySuccess(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_findAndValidateKey_not_found(): void
+    public function testFindAndValidateKeyNotFound(): void
     {
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(999)
-            ->willReturn(null);
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(999, $io);
+        $result = $service->findAndValidateKey(999, $io);
 
         $this->assertNull($result);
         $this->assertStringContainsString('找不到 IAM Key: 999', $output->fetch());
     }
 
-    public function test_findAndValidateKey_invalid(): void
+    public function testFindAndValidateKeyInvalid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setValid(false);
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         $this->assertNull($result);
-        $this->assertStringContainsString('IAM Key 1 未激活', $output->fetch());
+        $this->assertStringContainsString('IAM Key ' . $iamKeyId . ' 未激活', $output->fetch());
     }
 
-    public function test_findAndValidateKey_with_empty_credentials_still_valid(): void
+    public function testFindAndValidateKeyWithEmptyCredentialsStillValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setSecretKey('');
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         // IamKeyService只检查存在性和激活状态，不检查凭证完整性
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_findAndValidateKey_without_io(): void
+    public function testFindAndValidateKeyWithoutIo(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
-        $result = $this->service->findAndValidateKey(1);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId);
 
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_findAndValidateKey_without_io_invalid(): void
+    public function testFindAndValidateKeyWithoutIoInvalid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setValid(false);
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
-        $result = $this->service->findAndValidateKey(1);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId);
 
         $this->assertNull($result);
     }
 
-    public function test_validateAccountId_success(): void
+    public function testValidateAccountIdSuccess(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->validateAccountId($iamKey, $io);
+        $result = $service->validateAccountId($iamKey, $io);
 
         $this->assertTrue($result);
         $this->assertStringContainsString('使用 IAM Key 中的 Account ID', $output->fetch());
     }
 
-    public function test_validateAccountId_missing(): void
+    public function testValidateAccountIdMissing(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccountId(null);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->validateAccountId($iamKey, $io);
+        $result = $service->validateAccountId($iamKey, $io);
 
         $this->assertFalse($result);
         $this->assertStringContainsString('IamKey中未设置Account ID', $output->fetch());
     }
 
-    public function test_validateAccountId_empty_string_is_valid(): void
+    public function testValidateAccountIdEmptyStringIsValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccountId('');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->validateAccountId($iamKey, $io);
+        $result = $service->validateAccountId($iamKey, $io);
 
         // 空字符串在这个实现中是有效的，只有null才无效
         $this->assertTrue($result);
     }
 
-    public function test_validateAccountId_without_io(): void
+    public function testValidateAccountIdWithoutIo(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
 
-        $result = $this->service->validateAccountId($iamKey);
+        $result = $service->validateAccountId($iamKey);
 
         $this->assertTrue($result);
     }
 
-    public function test_validateAccountId_without_io_missing(): void
+    public function testValidateAccountIdWithoutIoMissing(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccountId(null);
 
-        $result = $this->service->validateAccountId($iamKey);
+        $result = $service->validateAccountId($iamKey);
 
         $this->assertFalse($result);
     }
 
-    public function test_findAndValidateKey_with_empty_access_key_still_valid(): void
+    public function testFindAndValidateKeyWithEmptyAccessKeyStillValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccessKey('');
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         // IamKeyService只检查存在性和激活状态，不检查凭证完整性
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_findAndValidateKey_with_null_access_key_still_valid(): void
+    public function testFindAndValidateKeyWithNullAccessKeyStillValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccessKey(null);
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         // IamKeyService只检查存在性和激活状态，不检查凭证完整性
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_findAndValidateKey_with_null_secret_key_still_valid(): void
+    public function testFindAndValidateKeyWithNullSecretKeyStillValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setSecretKey('');
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         // IamKeyService只检查存在性和激活状态，不检查凭证完整性
         $this->assertSame($iamKey, $result);
     }
 
-    public function test_validateAccountId_with_whitespace_string_is_valid(): void
+    public function testValidateAccountIdWithWhitespaceStringIsValid(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
         $iamKey = $this->createValidIamKey();
         $iamKey->setAccountId('   '); // 只有空格
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->validateAccountId($iamKey, $io);
+        $result = $service->validateAccountId($iamKey, $io);
 
         // 空格字符串在这个实现中也是有效的，只有null才无效
         $this->assertTrue($result);
     }
 
-    public function test_edge_case_with_valid_credentials(): void
+    public function testEdgeCaseWithValidCredentials(): void
     {
+        // 使用集成测试方式，从容器中获取服务
+        $service = self::getService(IamKeyService::class);
+
         $iamKey = new IamKey();
         $iamKey->setName('Test Key');
         $iamKey->setAccessKey('valid@example.com');
@@ -262,15 +302,16 @@ class IamKeyServiceTest extends TestCase
         $iamKey->setAccountId('account-123456');
         $iamKey->setValid(true);
 
-        $this->iamKeyRepository->expects($this->once())
-            ->method('find')
-            ->with(1)
-            ->willReturn($iamKey);
+        // 使用实体管理器持久化测试数据
+        self::getEntityManager()->persist($iamKey);
+        self::getEntityManager()->flush();
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->findAndValidateKey(1, $io);
+        $iamKeyId = $iamKey->getId();
+        $this->assertNotNull($iamKeyId, 'IAM Key ID should not be null after persistence');
+        $result = $service->findAndValidateKey($iamKeyId, $io);
 
         $this->assertSame($iamKey, $result);
         $this->assertEquals('valid@example.com', $result->getAccessKey());
@@ -289,4 +330,4 @@ class IamKeyServiceTest extends TestCase
 
         return $iamKey;
     }
-} 
+}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Enum;
 
 use Tourze\EnumExtra\Itemable;
@@ -12,7 +14,6 @@ enum DnsRecordType: string implements Labelable, Itemable, Selectable
 {
     use ItemTrait;
     use SelectTrait;
-
     case A = 'A';
     case MX = 'MX';
     case TXT = 'TXT';

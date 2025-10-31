@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Enum;
 
 use Tourze\EnumExtra\BadgeInterface;
@@ -13,7 +15,6 @@ enum DomainStatus: string implements Labelable, Itemable, Selectable, BadgeInter
 {
     use ItemTrait;
     use SelectTrait;
-
     case ACTIVE = 'active';
     case PENDING = 'pending';
     case SUSPENDED = 'suspended';

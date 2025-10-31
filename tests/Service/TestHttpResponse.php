@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Service;
 
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -9,11 +11,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class TestHttpResponse implements ResponseInterface
 {
-    private bool $success;
-
-    public function __construct(bool $success)
+    public function __construct(private readonly bool $success)
     {
-        $this->success = $success;
     }
 
     public function getStatusCode(): int
@@ -21,6 +20,9 @@ class TestHttpResponse implements ResponseInterface
         return $this->success ? 200 : 400;
     }
 
+    /**
+     * @return array<string, list<string>>
+     */
     public function getHeaders(bool $throw = true): array
     {
         return ['Content-Type' => ['application/json']];
@@ -28,9 +30,12 @@ class TestHttpResponse implements ResponseInterface
 
     public function getContent(bool $throw = true): string
     {
-        return 'test-content';
+        return 'test.example.com. 300 IN A 192.168.1.1';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(bool $throw = true): array
     {
         if ($this->success) {
@@ -38,12 +43,12 @@ class TestHttpResponse implements ResponseInterface
                 'success' => true,
                 'result' => ['id' => 'test-record-id'],
             ];
-        } else {
-            return [
-                'success' => false,
-                'errors' => [['code' => 1003, 'message' => 'Invalid access token']],
-            ];
         }
+
+        return [
+            'success' => false,
+            'errors' => [['code' => 1003, 'message' => 'Invalid access token']],
+        ];
     }
 
     public function cancel(): void
@@ -55,10 +60,11 @@ class TestHttpResponse implements ResponseInterface
      * 获取响应信息
      *
      * @param string|null $type 需要获取的信息类型，为 null 时返回所有信息
+     *
      * @return mixed 请求的信息
      */
     public function getInfo(?string $type = null): mixed
     {
-        return $type === null ? ['url' => 'https://example.com'] : null;
+        return null === $type ? ['url' => 'https://example.com'] : null;
     }
 }

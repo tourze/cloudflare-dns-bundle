@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Command;
 
 use CloudflareDnsBundle\Message\SyncDnsRecordToRemoteMessage;
@@ -32,7 +34,8 @@ class SyncDomainRecordToRemoteCommand extends Command
     {
         $this
             ->addArgument('dnsRecordId', InputArgument::OPTIONAL, 'DNS本地记录ID')
-            ->addOption('all', 'a', InputOption::VALUE_NONE, '同步所有未同步的记录');
+            ->addOption('all', 'a', InputOption::VALUE_NONE, '同步所有未同步的记录')
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -40,33 +43,39 @@ class SyncDomainRecordToRemoteCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         // 检查是否同步所有记录
-        if ((bool)$input->getOption('all') === true) {
+        if (true === (bool) $input->getOption('all')) {
             return $this->syncAllRecords($io);
         }
 
         // 如果没有提供recordId且没有--all选项，显示错误
         $recordId = $input->getArgument('dnsRecordId');
-        if ($recordId === null || $recordId === '') {
+        if (null === $recordId || '' === $recordId) {
             $io->error('请提供DNS记录ID或使用--all选项同步所有未同步的记录');
+
             return Command::FAILURE;
         }
 
         // 同步单个记录
         $record = $this->recordRepository->find($recordId);
 
-        if ($record === null) {
-            $io->error(sprintf('找不到ID为%s的DNS记录', $recordId));
+        if (null === $record) {
+            $recordIdStr = is_scalar($recordId) ? (string) $recordId : 'unknown';
+            $io->error(sprintf('找不到ID为%s的DNS记录', $recordIdStr));
+
             return Command::FAILURE;
         }
 
         // 创建消息并发送到队列
-        $message = new SyncDnsRecordToRemoteMessage($record->getId());
-        $this->messageBus->dispatch($message);
+        $recordId = $record->getId();
+        if (null !== $recordId) {
+            $message = new SyncDnsRecordToRemoteMessage($recordId);
+            $this->messageBus->dispatch($message);
+        }
 
         $io->success(sprintf(
-            '已将DNS记录【%s】加入同步队列，类型: %s，内容: %s', 
-            $record->getFullName(), 
-            $record->getType()->value, 
+            '已将DNS记录【%s】加入同步队列，类型: %s，内容: %s',
+            $record->getFullName(),
+            $record->getType()->value,
             $record->getContent()
         ));
 
@@ -83,8 +92,9 @@ class SyncDomainRecordToRemoteCommand extends Command
             'synced' => false,
         ]);
 
-        if (empty($records)) {
+        if ([] === $records) {
             $io->info('没有需要同步的DNS记录');
+
             return Command::SUCCESS;
         }
 
@@ -95,8 +105,11 @@ class SyncDomainRecordToRemoteCommand extends Command
 
         foreach ($records as $record) {
             // 创建消息并发送到队列
-            $message = new SyncDnsRecordToRemoteMessage($record->getId());
-            $this->messageBus->dispatch($message);
+            $recordId = $record->getId();
+            if (null !== $recordId) {
+                $message = new SyncDnsRecordToRemoteMessage($recordId);
+                $this->messageBus->dispatch($message);
+            }
             $io->progressAdvance();
         }
 

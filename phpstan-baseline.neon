@@ -1,0 +1,29 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^使用 getEntityManager\(\) 方法代替直接访问 \$this\-\>entityManager$#'
+			count: 9
+			path: tests/Service/AnalyticsDataProcessorTest.php
+
+		-
+			message: '#^在集成测试类 CloudflareDnsBundle\\Tests\\Service\\AnalyticsDataProcessorTest 中，不应直接实例化其测试目标 AnalyticsDataProcessor。$#'
+			identifier: integrationTest.noDirectInstantiationOfCoveredClass
+			count: 1
+			path: tests/Service/AnalyticsDataProcessorTest.php
+
+		-
+			message: '#^在集成测试类 CloudflareDnsBundle\\Tests\\Service\\CloudflareHttpClientTest 中，不应直接实例化其测试目标 CloudflareHttpClient。$#'
+			identifier: integrationTest.noDirectInstantiationOfCoveredClass
+			count: 1
+			path: tests/Service/CloudflareHttpClientTest.php
+
+		-
+			message: '#^使用 getEntityManager\(\) 方法代替直接访问 \$this\-\>entityManager$#'
+			count: 5
+			path: tests/Service/RecordSyncProcessorTest.php
+
+		-
+			message: '#^在集成测试类 CloudflareDnsBundle\\Tests\\Service\\RecordSyncProcessorTest 中，不应直接实例化其测试目标 RecordSyncProcessor。$#'
+			identifier: integrationTest.noDirectInstantiationOfCoveredClass
+			count: 1
+			path: tests/Service/RecordSyncProcessorTest.php

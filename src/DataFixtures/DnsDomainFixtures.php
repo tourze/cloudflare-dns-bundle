@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\DataFixtures;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
@@ -9,40 +11,42 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\DependencyInjection\Attribute\When;
 
 /**
  * 域名数据填充
  */
+#[When(env: 'test')]
 class DnsDomainFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     // 使用常量定义引用名称
-    public const EXAMPLE_DOMAIN_REFERENCE = 'domain-example-com';
-    public const TEST_DOMAIN_REFERENCE = 'domain-test-com';
-    public const DEMO_DOMAIN_REFERENCE = 'domain-demo-com';
+    public const EXAMPLE_DOMAIN_REFERENCE = 'example-domain';
+    public const TEST_DOMAIN_REFERENCE = 'test-domain';
+    public const DEMO_DOMAIN_REFERENCE = 'demo-domain';
 
     public function load(ObjectManager $manager): void
     {
-        // 创建example.com域名
+        // 创建google.com域名
         $exampleDomain = new DnsDomain();
-        $exampleDomain->setName('example.com');
+        $exampleDomain->setName('google.com');
         $exampleDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_API_KEY_REFERENCE, IamKey::class));
         $exampleDomain->setZoneId('zone123456789');
         $exampleDomain->setStatus(DomainStatus::ACTIVE);
-        $exampleDomain->setExpiresTime(new \DateTime('+1 year'));
-        $exampleDomain->setLockedUntilTime(new \DateTime('+6 months'));
+        $exampleDomain->setExpiresTime(new \DateTimeImmutable('+1 year'));
+        $exampleDomain->setLockedUntilTime(new \DateTimeImmutable('+6 months'));
         $exampleDomain->setAutoRenew(true);
         $exampleDomain->setValid(true);
 
         $manager->persist($exampleDomain);
 
-        // 创建test.com域名
+        // 创建github.com域名
         $testDomain = new DnsDomain();
-        $testDomain->setName('test.com');
+        $testDomain->setName('github.com');
         $testDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_DNS_KEY_REFERENCE, IamKey::class));
         $testDomain->setZoneId('zone987654321');
         $testDomain->setStatus(DomainStatus::ACTIVE);
-        $testDomain->setExpiresTime(new \DateTime('+2 years'));
-        $testDomain->setLockedUntilTime(new \DateTime('+3 months'));
+        $testDomain->setExpiresTime(new \DateTimeImmutable('+2 years'));
+        $testDomain->setLockedUntilTime(new \DateTimeImmutable('+3 months'));
         $testDomain->setAutoRenew(true);
         $testDomain->setValid(true);
 
@@ -54,7 +58,7 @@ class DnsDomainFixtures extends Fixture implements DependentFixtureInterface, Fi
         $demoDomain->setIamKey($this->getReference(IamKeyFixtures::CLOUDFLARE_DNS_KEY_REFERENCE, IamKey::class));
         $demoDomain->setZoneId('zone111222333');
         $demoDomain->setStatus(DomainStatus::PENDING);
-        $demoDomain->setExpiresTime(new \DateTime('+6 months'));
+        $demoDomain->setExpiresTime(new \DateTimeImmutable('+6 months'));
         $demoDomain->setLockedUntilTime(null);
         $demoDomain->setAutoRenew(false);
         $demoDomain->setValid(true);

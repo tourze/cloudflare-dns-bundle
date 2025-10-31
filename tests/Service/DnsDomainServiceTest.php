@@ -1,61 +1,106 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Service\DnsDomainService;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Psr\Log\LoggerInterface;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
-class DnsDomainServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(DnsDomainService::class)]
+#[RunTestsInSeparateProcesses]
+final class DnsDomainServiceTest extends AbstractIntegrationTestCase
 {
-    /**
-     * @var MockObject&LoggerInterface
-     */
-    private $logger;
-
-    private TestDnsDomainService $service;
-    private TestHttpResponse $response;
-
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        /** @var LoggerInterface&MockObject $logger */
-        $logger = $this->createMock(LoggerInterface::class);
-        $this->logger = $logger;
-
-        $this->response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $this->service = new TestDnsDomainService($this->logger, $this->response);
+        // Tests don't require special setup
     }
 
     public function testListDomains(): void
     {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+
+        // 创建装饰器服务实例
+        $service = new TestDnsDomainService($logger, $response);
+
         $domain = $this->createDnsDomain();
 
         // 配置 logger 的预期行为
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
-            ->with('获取CloudFlare域名列表成功', $this->anything());
+            ->with('获取CloudFlare域名列表成功', self::anything())
+        ;
 
-        $result = $this->service->listDomains($domain);
+        $result = $service->listDomains($domain);
         $this->assertTrue($result['success']);
     }
 
     public function testGetDomain(): void
     {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+
+        // 创建装饰器服务实例
+        $service = new TestDnsDomainService($logger, $response);
+
         $domain = $this->createDnsDomain();
         $domainName = 'example.com';
 
         // 配置 logger 的预期行为
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
-            ->with('获取CloudFlare域名详情成功', $this->anything());
+            ->with('获取CloudFlare域名详情成功', self::anything())
+        ;
 
-        $result = $this->service->getDomain($domain, $domainName);
+        $result = $service->getDomain($domain, $domainName);
         $this->assertTrue($result['success']);
+    }
+
+    public function testLookupZoneId(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+        $service = new TestDnsDomainService($logger, $response);
+        $domain = $this->createDnsDomain();
+
+        $logger->expects($this->once())
+            ->method('info')
+            ->with('查询Zone ID成功', self::anything())
+        ;
+
+        $result = $service->lookupZoneId($domain);
+        $this->assertSame('test-zone-id', $result);
+    }
+
+    public function testSyncZoneId(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $response = new TestHttpResponse(true);
+        $service = new TestDnsDomainService($logger, $response);
+        $domain = $this->createDnsDomain();
+        $domainData = ['id' => 'custom-zone-id'];
+
+        $logger->expects($this->once())
+            ->method('info')
+            ->with('同步Zone ID成功', self::anything())
+        ;
+
+        $result = $service->syncZoneId($domain, $domainData);
+        $this->assertSame('custom-zone-id', $result);
+        $this->assertSame('custom-zone-id', $domain->getZoneId());
     }
 
     /**
@@ -75,45 +120,5 @@ class DnsDomainServiceTest extends TestCase
         $domain->setIamKey($iamKey);
 
         return $domain;
-    }
-}
-
-/**
- * DnsDomainService 的测试装饰器
- */
-class TestDnsDomainService
-{
-    private TestHttpResponse $response;
-    private LoggerInterface $logger;
-
-    public function __construct(LoggerInterface $logger, TestHttpResponse $response)
-    {
-        $this->logger = $logger;
-        $this->response = $response;
-    }
-
-    /**
-     * 获取域名列表
-     */
-    public function listDomains(DnsDomain $domain): array
-    {
-        $this->logger->info('获取CloudFlare域名列表成功', [
-            'domain' => $domain
-        ]);
-
-        return $this->response->toArray();
-    }
-
-    /**
-     * 获取域名详情
-     */
-    public function getDomain(DnsDomain $domain, string $domainName): array
-    {
-        $this->logger->info('获取CloudFlare域名详情成功', [
-            'domain' => $domain,
-            'domainName' => $domainName
-        ]);
-
-        return $this->response->toArray();
     }
 }

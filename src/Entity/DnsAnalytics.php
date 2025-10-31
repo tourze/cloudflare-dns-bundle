@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Entity;
 
 use CloudflareDnsBundle\Repository\DnsAnalyticsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 
@@ -17,29 +20,39 @@ class DnsAnalytics implements \Stringable
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
-    private ?int $id = 0;
+    private int $id = 0;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(cascade: ['persist'])]
     #[ORM\JoinColumn(onDelete: 'CASCADE')]
+    #[Assert\NotNull(message: '域名不能为空')]
     private ?DnsDomain $domain = null;
 
-    #[ORM\Column(type: Types::STRING, length: 64, options: ['comment' => '查询名称'])]
+    #[ORM\Column(type: Types::STRING, length: 64, nullable: false, options: ['comment' => '查询名称'])]
+    #[Assert\NotBlank(message: '查询名称不能为空')]
+    #[Assert\Length(max: 64, maxMessage: '查询名称长度不能超过 {{ limit }} 个字符')]
     private ?string $queryName = null;
 
-    #[ORM\Column(type: Types::STRING, length: 32, options: ['comment' => '查询类型'])]
+    #[ORM\Column(type: Types::STRING, length: 32, nullable: false, options: ['comment' => '查询类型'])]
+    #[Assert\NotBlank(message: '查询类型不能为空')]
+    #[Assert\Length(max: 32, maxMessage: '查询类型长度不能超过 {{ limit }} 个字符')]
     private ?string $queryType = null;
 
-    #[ORM\Column(type: Types::INTEGER, options: ['comment' => '查询次数'])]
+    #[ORM\Column(type: Types::INTEGER, nullable: false, options: ['comment' => '查询次数'])]
+    #[Assert\NotNull(message: '查询次数不能为空')]
+    #[Assert\PositiveOrZero(message: '查询次数不能为负数')]
     private ?int $queryCount = 0;
 
-    #[ORM\Column(type: Types::FLOAT, options: ['comment' => '平均响应时间(ms)'])]
+    #[ORM\Column(type: Types::FLOAT, nullable: false, options: ['comment' => '平均响应时间(ms)'])]
+    #[Assert\NotNull(message: '平均响应时间不能为空')]
+    #[Assert\PositiveOrZero(message: '平均响应时间不能为负数')]
     private ?float $responseTimeAvg = 0.0;
 
     #[IndexColumn]
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['comment' => '统计时间'])]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: false, options: ['comment' => '统计时间'])]
+    #[Assert\NotNull(message: '统计时间不能为空')]
     private ?\DateTimeInterface $statTime = null;
 
-    public function getId(): ?int
+    public function getId(): int
     {
         return $this->id;
     }
@@ -49,10 +62,9 @@ class DnsAnalytics implements \Stringable
         return $this->domain;
     }
 
-    public function setDomain(?DnsDomain $domain): static
+    public function setDomain(?DnsDomain $domain): void
     {
         $this->domain = $domain;
-        return $this;
     }
 
     public function getQueryName(): ?string
@@ -60,10 +72,9 @@ class DnsAnalytics implements \Stringable
         return $this->queryName;
     }
 
-    public function setQueryName(?string $queryName): static
+    public function setQueryName(?string $queryName): void
     {
         $this->queryName = $queryName;
-        return $this;
     }
 
     public function getQueryType(): ?string
@@ -71,10 +82,9 @@ class DnsAnalytics implements \Stringable
         return $this->queryType;
     }
 
-    public function setQueryType(?string $queryType): static
+    public function setQueryType(?string $queryType): void
     {
         $this->queryType = $queryType;
-        return $this;
     }
 
     public function getQueryCount(): ?int
@@ -82,10 +92,9 @@ class DnsAnalytics implements \Stringable
         return $this->queryCount;
     }
 
-    public function setQueryCount(?int $queryCount): static
+    public function setQueryCount(?int $queryCount): void
     {
         $this->queryCount = $queryCount;
-        return $this;
     }
 
     public function getResponseTimeAvg(): ?float
@@ -93,10 +102,9 @@ class DnsAnalytics implements \Stringable
         return $this->responseTimeAvg;
     }
 
-    public function setResponseTimeAvg(?float $responseTimeAvg): static
+    public function setResponseTimeAvg(?float $responseTimeAvg): void
     {
         $this->responseTimeAvg = $responseTimeAvg;
-        return $this;
     }
 
     public function getStatTime(): ?\DateTimeInterface
@@ -104,14 +112,13 @@ class DnsAnalytics implements \Stringable
         return $this->statTime;
     }
 
-    public function setStatTime(?\DateTimeInterface $statTime): static
+    public function setStatTime(?\DateTimeInterface $statTime): void
     {
         $this->statTime = $statTime;
-        return $this;
     }
 
     public function __toString(): string
     {
-        return $this->getId() !== null ? "{$this->getQueryName()} ({$this->getQueryType()})" : '';
+        return $this->getId() > 0 ? "{$this->getQueryName()} ({$this->getQueryType()})" : '';
     }
 }

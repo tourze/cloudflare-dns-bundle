@@ -1,18 +1,50 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Entity;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Enum\DnsRecordType;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitDoctrineEntity\AbstractEntityTestCase;
 
 /**
  * DNS记录实体测试
+ *
+ * @internal
  */
-class DnsRecordTest extends TestCase
+#[CoversClass(DnsRecord::class)]
+final class DnsRecordTest extends AbstractEntityTestCase
 {
-    public function test_constructor_initializes_default_values(): void
+    protected function createEntity(): object
+    {
+        return new DnsRecord();
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed}>
+     */
+    public static function propertiesProvider(): iterable
+    {
+        $domain = new DnsDomain();
+        $domain->setName('example.com');
+
+        yield 'domain' => ['domain', $domain];
+        yield 'domain with null' => ['domain', null];
+        yield 'type' => ['type', DnsRecordType::CNAME];
+        yield 'record' => ['record', 'www'];
+        yield 'recordId' => ['recordId', 'test-record-id'];
+        yield 'recordId with null' => ['recordId', null];
+        yield 'content' => ['content', 'example.com'];
+        yield 'ttl' => ['ttl', 3600];
+        yield 'proxy' => ['proxy', true];
+        yield 'synced' => ['synced', true];
+        yield 'syncing' => ['syncing', true];
+    }
+
+    public function testConstructorInitializesDefaultValues(): void
     {
         $record = new DnsRecord();
 
@@ -33,120 +65,110 @@ class DnsRecordTest extends TestCase
         $this->assertNull($record->getUpdateTime());
     }
 
-    public function test_setDomain_and_getDomain(): void
+    public function testSetDomainAndGetDomain(): void
     {
         $record = new DnsRecord();
         $domain = new DnsDomain();
 
-        $result = $record->setDomain($domain);
+        $record->setDomain($domain);
 
-        $this->assertSame($record, $result);
         $this->assertSame($domain, $record->getDomain());
     }
 
-    public function test_setDomain_with_null(): void
+    public function testSetDomainWithNull(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setDomain(null);
+        $record->setDomain(null);
 
-        $this->assertSame($record, $result);
         $this->assertNull($record->getDomain());
     }
 
-    public function test_setRecord_and_getRecord(): void
+    public function testSetRecordAndGetRecord(): void
     {
         $record = new DnsRecord();
         $recordName = 'www';
 
-        $result = $record->setRecord($recordName);
+        $record->setRecord($recordName);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($recordName, $record->getRecord());
     }
 
-    public function test_setRecordId_and_getRecordId(): void
+    public function testSetRecordIdAndGetRecordId(): void
     {
         $record = new DnsRecord();
         $recordId = 'record123456789';
 
-        $result = $record->setRecordId($recordId);
+        $record->setRecordId($recordId);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($recordId, $record->getRecordId());
     }
 
-    public function test_setRecordId_with_null(): void
+    public function testSetRecordIdWithNull(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setRecordId(null);
+        $record->setRecordId(null);
 
-        $this->assertSame($record, $result);
         $this->assertNull($record->getRecordId());
     }
 
-    public function test_setType_and_getType(): void
+    public function testSetTypeAndGetType(): void
     {
         $record = new DnsRecord();
         $type = DnsRecordType::CNAME;
 
-        $result = $record->setType($type);
+        $record->setType($type);
 
-        $this->assertSame($record, $result);
         $this->assertSame($type, $record->getType());
     }
 
-    public function test_setContent_and_getContent(): void
+    public function testSetContentAndGetContent(): void
     {
         $record = new DnsRecord();
         $content = 'example.com';
 
-        $result = $record->setContent($content);
+        $record->setContent($content);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($content, $record->getContent());
     }
 
-    public function test_setTtl_and_getTtl(): void
+    public function testSetTtlAndGetTtl(): void
     {
         $record = new DnsRecord();
         $ttl = 3600;
 
-        $result = $record->setTtl($ttl);
+        $record->setTtl($ttl);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($ttl, $record->getTtl());
     }
 
-    public function test_setProxy_and_isProxy(): void
+    public function testSetProxyAndIsProxy(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setProxy(true);
+        $record->setProxy(true);
 
-        $this->assertSame($record, $result);
         $this->assertTrue($record->isProxy());
 
         $record->setProxy(false);
         $this->assertFalse($record->isProxy());
     }
 
-    public function test_setSynced_and_isSynced(): void
+    public function testSetSyncedAndIsSynced(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setSynced(true);
+        $record->setSynced(true);
 
-        $this->assertSame($record, $result);
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $record->getLastSyncedTime());
 
         $record->setSynced(false);
         $this->assertFalse($record->isSynced());
     }
 
-    public function test_setSynced_with_true_sets_lastSyncedTime(): void
+    public function testSetSyncedWithTrueSetsLastSyncedTime(): void
     {
         $record = new DnsRecord();
         $beforeTime = new \DateTime();
@@ -154,87 +176,80 @@ class DnsRecordTest extends TestCase
         $record->setSynced(true);
 
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $record->getLastSyncedTime());
         $this->assertGreaterThanOrEqual($beforeTime, $record->getLastSyncedTime());
     }
 
-    public function test_setLastSyncedTime_and_getLastSyncedTime(): void
+    public function testSetLastSyncedTimeAndGetLastSyncedTime(): void
     {
         $record = new DnsRecord();
         $lastSyncedTime = new \DateTime('2023-01-01 12:00:00');
 
-        $result = $record->setLastSyncedTime($lastSyncedTime);
+        $record->setLastSyncedTime($lastSyncedTime);
 
-        $this->assertSame($record, $result);
         $this->assertSame($lastSyncedTime, $record->getLastSyncedTime());
     }
 
-    public function test_setLastSyncedTime_with_null(): void
+    public function testSetLastSyncedTimeWithNull(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setLastSyncedTime(null);
+        $record->setLastSyncedTime(null);
 
-        $this->assertSame($record, $result);
         $this->assertNull($record->getLastSyncedTime());
     }
 
-    public function test_setSyncing_and_isSyncing(): void
+    public function testSetSyncingAndIsSyncing(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setSyncing(true);
+        $record->setSyncing(true);
 
-        $this->assertSame($record, $result);
         $this->assertTrue($record->isSyncing());
 
         $record->setSyncing(false);
         $this->assertFalse($record->isSyncing());
     }
 
-    public function test_setCreatedBy_and_getCreatedBy(): void
+    public function testSetCreatedByAndGetCreatedBy(): void
     {
         $record = new DnsRecord();
         $createdBy = 'admin';
 
-        $result = $record->setCreatedBy($createdBy);
+        $record->setCreatedBy($createdBy);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($createdBy, $record->getCreatedBy());
     }
 
-    public function test_setCreatedBy_with_null(): void
+    public function testSetCreatedByWithNull(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setCreatedBy(null);
+        $record->setCreatedBy(null);
 
-        $this->assertSame($record, $result);
         $this->assertNull($record->getCreatedBy());
     }
 
-    public function test_setUpdatedBy_and_getUpdatedBy(): void
+    public function testSetUpdatedByAndGetUpdatedBy(): void
     {
         $record = new DnsRecord();
         $updatedBy = 'admin';
 
-        $result = $record->setUpdatedBy($updatedBy);
+        $record->setUpdatedBy($updatedBy);
 
-        $this->assertSame($record, $result);
         $this->assertEquals($updatedBy, $record->getUpdatedBy());
     }
 
-    public function test_setUpdatedBy_with_null(): void
+    public function testSetUpdatedByWithNull(): void
     {
         $record = new DnsRecord();
 
-        $result = $record->setUpdatedBy(null);
+        $record->setUpdatedBy(null);
 
-        $this->assertSame($record, $result);
         $this->assertNull($record->getUpdatedBy());
     }
 
-    public function test_setCreateTime_and_getCreateTime(): void
+    public function testSetCreateTimeAndGetCreateTime(): void
     {
         $record = new DnsRecord();
         $createTime = new \DateTimeImmutable('2023-01-01 10:00:00');
@@ -244,7 +259,7 @@ class DnsRecordTest extends TestCase
         $this->assertSame($createTime, $record->getCreateTime());
     }
 
-    public function test_setCreateTime_with_null(): void
+    public function testSetCreateTimeWithNull(): void
     {
         $record = new DnsRecord();
 
@@ -253,7 +268,7 @@ class DnsRecordTest extends TestCase
         $this->assertNull($record->getCreateTime());
     }
 
-    public function test_setUpdateTime_and_getUpdateTime(): void
+    public function testSetUpdateTimeAndGetUpdateTime(): void
     {
         $record = new DnsRecord();
         $updateTime = new \DateTimeImmutable('2023-01-01 11:00:00');
@@ -263,7 +278,7 @@ class DnsRecordTest extends TestCase
         $this->assertSame($updateTime, $record->getUpdateTime());
     }
 
-    public function test_setUpdateTime_with_null(): void
+    public function testSetUpdateTimeWithNull(): void
     {
         $record = new DnsRecord();
 
@@ -272,7 +287,7 @@ class DnsRecordTest extends TestCase
         $this->assertNull($record->getUpdateTime());
     }
 
-    public function test_toString_with_record(): void
+    public function testToStringWithRecord(): void
     {
         $record = new DnsRecord();
         $record->setRecord('www');
@@ -280,38 +295,38 @@ class DnsRecordTest extends TestCase
         $this->assertEquals('(www)', (string) $record);
     }
 
-    public function test_toString_without_record(): void
+    public function testToStringWithoutRecord(): void
     {
         $record = new DnsRecord();
 
         $this->assertEquals('', (string) $record);
     }
 
-    public function test_getFullName(): void
+    public function testGetFullName(): void
     {
         $record = new DnsRecord();
         $domain = new DnsDomain();
         $domain->setName('example.com');
-        
+
         $record->setDomain($domain);
         $record->setRecord('www');
 
         $this->assertEquals('www.example.com', $record->getFullName());
     }
 
-    public function test_getFullName_with_root_record(): void
+    public function testGetFullNameWithRootRecord(): void
     {
         $record = new DnsRecord();
         $domain = new DnsDomain();
         $domain->setName('example.com');
-        
+
         $record->setDomain($domain);
         $record->setRecord('@');
 
         $this->assertEquals('@.example.com', $record->getFullName());
     }
 
-    public function test_all_dns_record_types(): void
+    public function testAllDnsRecordTypes(): void
     {
         $record = new DnsRecord();
 
@@ -321,7 +336,7 @@ class DnsRecordTest extends TestCase
         }
     }
 
-    public function test_complex_scenario_with_all_properties(): void
+    public function testComplexScenarioWithAllProperties(): void
     {
         $record = new DnsRecord();
         $domain = new DnsDomain();
@@ -341,16 +356,16 @@ class DnsRecordTest extends TestCase
         $updateTime = new \DateTimeImmutable('2023-06-01 15:00:00');
         $lastSyncedTime = new \DateTime('2023-06-01 14:00:00');
 
-        $record->setDomain($domain)
-            ->setType($type)
-            ->setRecord($recordName)
-            ->setRecordId($recordId)
-            ->setContent($content)
-            ->setTtl($ttl)
-            ->setProxy($proxy)
-            ->setSyncing($syncing)
-            ->setCreatedBy($createdBy)
-            ->setUpdatedBy($updatedBy);
+        $record->setDomain($domain);
+        $record->setType($type);
+        $record->setRecord($recordName);
+        $record->setRecordId($recordId);
+        $record->setContent($content);
+        $record->setTtl($ttl);
+        $record->setProxy($proxy);
+        $record->setSyncing($syncing);
+        $record->setCreatedBy($createdBy);
+        $record->setUpdatedBy($updatedBy);
         $record->setCreateTime($createTime);
         $record->setUpdateTime($updateTime);
         $record->setLastSyncedTime($lastSyncedTime);
@@ -371,39 +386,39 @@ class DnsRecordTest extends TestCase
         $this->assertSame($updateTime, $record->getUpdateTime());
         $this->assertEquals('mail.test.com', $record->getFullName());
         $this->assertEquals('(mail)', (string) $record);
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $record->getLastSyncedTime());
     }
 
-    public function test_edge_case_with_empty_strings(): void
+    public function testEdgeCaseWithEmptyStrings(): void
     {
         $record = new DnsRecord();
 
-        $record->setRecord('')
-            ->setRecordId('')
-            ->setContent('');
+        $record->setRecord('');
+        $record->setRecordId('');
+        $record->setContent('');
 
         $this->assertEquals('', $record->getRecord());
         $this->assertEquals('', $record->getRecordId());
         $this->assertEquals('', $record->getContent());
     }
 
-    public function test_edge_case_with_long_strings(): void
+    public function testEdgeCaseWithLongStrings(): void
     {
         $record = new DnsRecord();
         $longRecord = str_repeat('a', 60);
         $longRecordId = str_repeat('b', 60);
         $longContent = str_repeat('c', 1000);
 
-        $record->setRecord($longRecord)
-            ->setRecordId($longRecordId)
-            ->setContent($longContent);
+        $record->setRecord($longRecord);
+        $record->setRecordId($longRecordId);
+        $record->setContent($longContent);
 
         $this->assertEquals($longRecord, $record->getRecord());
         $this->assertEquals($longRecordId, $record->getRecordId());
         $this->assertEquals($longContent, $record->getContent());
     }
 
-    public function test_edge_case_with_zero_ttl(): void
+    public function testEdgeCaseWithZeroTtl(): void
     {
         $record = new DnsRecord();
 
@@ -412,7 +427,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals(0, $record->getTtl());
     }
 
-    public function test_edge_case_with_negative_ttl(): void
+    public function testEdgeCaseWithNegativeTtl(): void
     {
         $record = new DnsRecord();
 
@@ -421,7 +436,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals(-100, $record->getTtl());
     }
 
-    public function test_edge_case_with_maximum_ttl(): void
+    public function testEdgeCaseWithMaximumTtl(): void
     {
         $record = new DnsRecord();
 
@@ -430,7 +445,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals(PHP_INT_MAX, $record->getTtl());
     }
 
-    public function test_special_record_names(): void
+    public function testSpecialRecordNames(): void
     {
         $record = new DnsRecord();
         $domain = new DnsDomain();
@@ -450,7 +465,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals('sub.domain.example.com', $record->getFullName());
     }
 
-    public function test_sync_state_transitions(): void
+    public function testSyncStateTransitions(): void
     {
         $record = new DnsRecord();
 
@@ -469,10 +484,10 @@ class DnsRecordTest extends TestCase
         $record->setSynced(true);
         $this->assertFalse($record->isSyncing());
         $this->assertTrue($record->isSynced());
-        $this->assertInstanceOf(\DateTime::class, $record->getLastSyncedTime());
+        $this->assertNotNull($record->getLastSyncedTime());
     }
 
-    public function test_all_dns_record_type_enum_values(): void
+    public function testAllDnsRecordTypeEnumValues(): void
     {
         $expectedTypes = ['A', 'MX', 'TXT', 'CNAME', 'NS', 'URI'];
         $actualTypes = [];
@@ -484,7 +499,7 @@ class DnsRecordTest extends TestCase
         $this->assertEquals($expectedTypes, $actualTypes);
     }
 
-    public function test_content_with_special_characters(): void
+    public function testContentWithSpecialCharacters(): void
     {
         $record = new DnsRecord();
 
@@ -503,4 +518,4 @@ class DnsRecordTest extends TestCase
         $record->setContent($multilineContent);
         $this->assertEquals($multilineContent, $record->getContent());
     }
-} 
+}

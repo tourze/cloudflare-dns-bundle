@@ -1,60 +1,46 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Repository;
 
+use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Repository\IamKeyRepository;
-use Doctrine\Persistence\ManagerRegistry;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractRepositoryTestCase;
 
-class IamKeyRepositoryTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(IamKeyRepository::class)]
+#[RunTestsInSeparateProcesses]
+final class IamKeyRepositoryTest extends AbstractRepositoryTestCase
 {
-    public function test_constructor_creates_repository_instance(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new IamKeyRepository($registry);
-        
+    protected function onSetUp(): void
+    {
+    }
+
+    public function testRepositoryInstance(): void
+    {
+        $repository = self::getService(IamKeyRepository::class);
         $this->assertInstanceOf(IamKeyRepository::class, $repository);
     }
 
-    public function test_repository_extends_service_entity_repository(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new IamKeyRepository($registry);
-        
-        $this->assertInstanceOf(
-            \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository::class,
-            $repository
-        );
-    }
-
-    public function test_repository_has_standard_doctrine_methods(): void
-    {        $registry = $this->createMock(ManagerRegistry::class);
-        $repository = new IamKeyRepository($registry);
-        
-        $expectedMethods = ['find', 'findAll', 'findBy', 'findOneBy'];
-        
-        foreach ($expectedMethods as $method) {
-            $this->assertTrue(
-                method_exists($repository, $method),
-                "Repository should have method: {$method}"
-            );
-        }
-    }
-
-    public function test_repository_class_structure(): void
+    protected function createNewEntity(): object
     {
-        $reflection = new \ReflectionClass(IamKeyRepository::class);
-        
-        // 验证类继承关系
-        $this->assertTrue($reflection->isSubclassOf(
-            \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository::class
-        ));
-        
-        // 验证构造函数存在
-        $this->assertTrue($reflection->hasMethod('__construct'));
-        
-        $constructor = $reflection->getMethod('__construct');
-        $parameters = $constructor->getParameters();
-        
-        $this->assertCount(1, $parameters);
-        $this->assertEquals('registry', $parameters[0]->getName());
+        $iamKey = new IamKey();
+        $iamKey->setName('Test IAM Key ' . uniqid());
+        $iamKey->setAccessKey('test@example.com');
+        $iamKey->setSecretKey('test-secret-key');
+        $iamKey->setAccountId('test-account-id');
+        $iamKey->setValid(true);
+
+        return $iamKey;
     }
-} 
+
+    protected function getRepository(): IamKeyRepository
+    {
+        return self::getService(IamKeyRepository::class);
+    }
+}

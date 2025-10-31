@@ -1,252 +1,49 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\MessageHandler;
 
+use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
-use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Message\SyncDnsDomainsFromRemoteMessage;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
 use CloudflareDnsBundle\Service\DnsRecordService;
+use CloudflareDnsBundle\Service\RecordSyncProcessor;
 use Doctrine\ORM\EntityManagerInterface;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * 处理从远程同步DNS记录到本地的消息
  */
 #[AsMessageHandler]
-class SyncDnsDomainsFromRemoteMessageHandler
+#[Autoconfigure(public: true)]
+#[WithMonologChannel(channel: 'cloudflare_dns')]
+readonly class SyncDnsDomainsFromRemoteMessageHandler
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly DnsDomainRepository $domainRepository,
-        private readonly DnsRecordRepository $recordRepository,
-        private readonly DnsRecordService $dnsService,
-        private readonly LoggerInterface $logger,
+        private EntityManagerInterface $entityManager,
+        private DnsDomainRepository $domainRepository,
+        private DnsRecordRepository $recordRepository,
+        private DnsRecordService $dnsService,
+        private RecordSyncProcessor $recordSyncProcessor,
+        private LoggerInterface $logger,
     ) {
     }
 
     public function __invoke(SyncDnsDomainsFromRemoteMessage $message): void
     {
-        // 查找域名
-        $domainId = $message->getDomainId();
-        $domain = $this->domainRepository->find($domainId);
-
-        if ($domain === null) {
-            $this->logger->warning('找不到要同步的域名', [
-                'domainId' => $domainId,
-            ]);
-            return;
-        }
-
-        if (!$domain->isValid() || $domain->getZoneId() === null || $domain->getZoneId() === '') {
-            $this->logger->warning('域名无效或缺少Zone ID，无法同步', [
-                'domain' => $domain->getName(),
-                'valid' => $domain->isValid(),
-                'zoneId' => $domain->getZoneId(),
-            ]);
+        $domain = $this->findAndValidateDomain($message->getDomainId());
+        if (null === $domain) {
             return;
         }
 
         try {
-            $this->logger->info('开始从Cloudflare获取域名解析记录', [
-                'domain' => $domain->getName(),
-                'zoneId' => $domain->getZoneId(),
-            ]);
-
-            // 分页获取所有记录
-            $page = 1;
-            $perPage = 50;
-            $allRemoteRecords = [];
-
-            while (true) {
-                $response = $this->dnsService->listRecords($domain, [
-                    'page' => $page,
-                    'per_page' => $perPage,
-                ]);
-
-                if (!$response['success']) {
-                    $this->logger->warning('获取DNS记录列表失败', [
-                        'domain' => $domain->getName(),
-                        'result' => $response,
-                    ]);
-                    break;
-                }
-
-                if (empty($response['result'])) {
-                    break;
-                }
-
-                $allRemoteRecords = array_merge($allRemoteRecords, $response['result']);
-
-                // 检查是否有更多页
-                if (!isset($response['result_info']['total_pages']) ||
-                    $response['result_info']['total_pages'] <= $page) {
-                    break;
-                }
-
-                $page++;
-            }
-
-            if (empty($allRemoteRecords)) {
-                $this->logger->info('域名在Cloudflare上没有任何解析记录', [
-                    'domain' => $domain->getName(),
-                ]);
-                return;
-            }
-
-            $this->logger->info('从Cloudflare获取到解析记录', [
-                'domain' => $domain->getName(),
-                'count' => count($allRemoteRecords),
-            ]);
-
-            // 获取本地已存在的记录，并建立索引
-            $localRecords = $this->recordRepository->findBy(['domain' => $domain]);
-            $localRecordMap = [];
-            $localRecordByCloudflareId = [];
-
-            foreach ($localRecords as $record) {
-                $key = $record->getType()->value . '_' . $record->getRecord();
-                $localRecordMap[$key] = $record;
-
-                if ($record->getRecordId() !== null && $record->getRecordId() !== '') {
-                    $localRecordByCloudflareId[$record->getRecordId()] = $record;
-                }
-            }
-
-            $createCount = 0;
-            $updateCount = 0;
-            $skipCount = 0;
-            $errorCount = 0;
-
-            // 处理远程记录
-            foreach ($allRemoteRecords as $remoteRecord) {
-                try {
-                    $recordType = $remoteRecord['type'] ?? null;
-                    $recordName = $remoteRecord['name'] ?? '';
-                    $recordContent = $remoteRecord['content'] ?? '';
-                    $recordId = $remoteRecord['id'] ?? '';
-
-                    // 去除域名后缀，获取子域名部分
-                    $domainSuffix = '.' . $domain->getName();
-                    if (str_ends_with($recordName, $domainSuffix)) {
-                        $recordName = substr($recordName, 0, -strlen($domainSuffix));
-                    }
-                    // 处理根域名的情况
-                    if ($recordName === $domain->getName()) {
-                        $recordName = '@';
-                    }
-
-                    // 构建记录键名用于查找
-                    $key = $recordType . '_' . $recordName;
-
-                    // 如果本地已有此记录，则更新
-                    if (isset($localRecordMap[$key]) || isset($localRecordByCloudflareId[$recordId])) {
-                        // 优先使用ID匹配，其次使用类型和名称匹配
-                        $localRecord = isset($localRecordByCloudflareId[$recordId])
-                            ? $localRecordByCloudflareId[$recordId]
-                            : $localRecordMap[$key];
-
-                        // 检查是否需要更新
-                        $needUpdate = false;
-
-                        // 更新记录ID（可能在本地已有记录但没有ID的情况）
-                        if (($localRecord->getRecordId() === null || $localRecord->getRecordId() === '') && $recordId !== '') {
-                            $localRecord->setRecordId($recordId);
-                            $needUpdate = true;
-                        }
-
-                        // 检查内容是否有变化
-                        if ($localRecord->getContent() !== $recordContent) {
-                            $localRecord->setContent($recordContent);
-                            $needUpdate = true;
-                        }
-
-                        // 更新其他字段
-                        if (isset($remoteRecord['ttl']) && $localRecord->getTtl() != $remoteRecord['ttl']) {
-                            $localRecord->setTtl($remoteRecord['ttl']);
-                            $needUpdate = true;
-                        }
-
-                        if (isset($remoteRecord['proxied']) && $localRecord->isProxy() !== $remoteRecord['proxied']) {
-                            $localRecord->setProxy($remoteRecord['proxied']);
-                            $needUpdate = true;
-                        }
-
-                        if ($needUpdate) {
-                            $localRecord->setSynced(true); // 设置为已同步
-                            $localRecord->setLastSyncedTime(new \DateTime());
-                            $this->entityManager->persist($localRecord);
-                            $updateCount++;
-
-                            $this->logger->info('更新本地DNS记录', [
-                                'record' => $localRecord->getFullName(),
-                                'type' => $recordType,
-                                'content' => $recordContent,
-                            ]);
-                        } else {
-                            $skipCount++;
-                        }
-                    } else {
-                        // 本地没有此记录，创建新记录
-                        // 尝试将字符串类型转换为枚举类型
-                        $enumType = null;
-                        foreach (DnsRecordType::cases() as $case) {
-                            if ($case->value === $recordType) {
-                                $enumType = $case;
-                                break;
-                            }
-                        }
-
-                        if ($enumType !== null) {
-                            $newRecord = new DnsRecord();
-                            $newRecord->setDomain($domain);
-                            $newRecord->setType($enumType);
-                            $newRecord->setRecord($recordName);
-                            $newRecord->setRecordId($recordId);
-                            $newRecord->setContent($recordContent);
-                            $newRecord->setTtl($remoteRecord['ttl'] ?? 60);
-                            $newRecord->setProxy($remoteRecord['proxied'] ?? false);
-                            $newRecord->setSynced(true); // 设置为已同步
-                            $newRecord->setLastSyncedTime(new \DateTime());
-
-                            $this->entityManager->persist($newRecord);
-                            $createCount++;
-
-                            $this->logger->info('创建本地DNS记录', [
-                                'record' => $domain->getName() . '.' . $recordName,
-                                'type' => $recordType,
-                                'content' => $recordContent,
-                            ]);
-                        } else {
-                            $this->logger->warning('未知的DNS记录类型，跳过创建', [
-                                'type' => $recordType,
-                                'record' => $recordName,
-                            ]);
-                            $skipCount++;
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    $this->logger->error('处理DNS记录时出错', [
-                        'record' => $remoteRecord['name'] ?? 'unknown',
-                        'error' => $e->getMessage(),
-                    ]);
-                    $errorCount++;
-                }
-            }
-
-            // 提交所有变更
-            $this->entityManager->flush();
-
-            $this->logger->info('域名DNS记录同步完成', [
-                'domain' => $domain->getName(),
-                'created' => $createCount,
-                'updated' => $updateCount,
-                'skipped' => $skipCount,
-                'errors' => $errorCount,
-            ]);
-
+            $this->syncDomainRecords($domain);
         } catch (\Throwable $e) {
             $this->logger->error('同步DNS记录时发生错误', [
                 'domain' => $domain->getName(),
@@ -254,5 +51,260 @@ class SyncDnsDomainsFromRemoteMessageHandler
                 'exception' => $e,
             ]);
         }
+    }
+
+    private function findAndValidateDomain(int $domainId): ?DnsDomain
+    {
+        $domain = $this->domainRepository->find($domainId);
+
+        if (null === $domain) {
+            $this->logger->warning('找不到要同步的域名', ['domainId' => $domainId]);
+
+            return null;
+        }
+
+        if (true !== $domain->isValid() || null === $domain->getZoneId() || '' === $domain->getZoneId()) {
+            $this->logger->warning('域名无效或缺少Zone ID，无法同步', [
+                'domain' => $domain->getName(),
+                'valid' => $domain->isValid(),
+                'zoneId' => $domain->getZoneId(),
+            ]);
+
+            return null;
+        }
+
+        return $domain;
+    }
+
+    private function syncDomainRecords(DnsDomain $domain): void
+    {
+        $this->logger->info('开始从Cloudflare获取域名解析记录', [
+            'domain' => $domain->getName(),
+            'zoneId' => $domain->getZoneId(),
+        ]);
+
+        $remoteRecords = $this->fetchAllRemoteRecords($domain);
+        if ([] === $remoteRecords) {
+            $this->logger->info('域名在Cloudflare上没有任何解析记录', ['domain' => $domain->getName()]);
+
+            return;
+        }
+
+        $this->logger->info('从Cloudflare获取到解析记录', [
+            'domain' => $domain->getName(),
+            'count' => count($remoteRecords),
+        ]);
+
+        $this->processRecords($domain, $remoteRecords);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchAllRemoteRecords(DnsDomain $domain): array
+    {
+        $page = 1;
+        $perPage = 50;
+        $allRemoteRecords = [];
+
+        while (true) {
+            $response = $this->dnsService->listRecords($domain, [
+                'page' => $page,
+                'per_page' => $perPage,
+            ]);
+
+            if (!$this->isValidResponse($response, $domain)) {
+                break;
+            }
+
+            $pageRecords = $this->extractPageRecords($response);
+            if ([] === $pageRecords) {
+                break;
+            }
+
+            $allRemoteRecords = array_merge($allRemoteRecords, $pageRecords);
+
+            if (!$this->hasMorePages($response, $page)) {
+                break;
+            }
+
+            ++$page;
+        }
+
+        return $allRemoteRecords;
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     */
+    private function isValidResponse(array $response, DnsDomain $domain): bool
+    {
+        $success = $response['success'] ?? false;
+        if (!is_bool($success) || !$success) {
+            $this->logger->warning('获取DNS记录列表失败', [
+                'domain' => $domain->getName(),
+                'result' => $response,
+            ]);
+
+            return false;
+        }
+
+        return ($response['result'] ?? []) !== [];
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     * @return array<int, array<string, mixed>>
+     */
+    private function extractPageRecords(array $response): array
+    {
+        $result = $response['result'] ?? [];
+        if (!is_array($result)) {
+            return [];
+        }
+
+        return $this->normalizeRecordKeys($result);
+    }
+
+    /**
+     * @param array<int|string, mixed> $records
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeRecordKeys(array $records): array
+    {
+        $typedResult = [];
+        foreach ($records as $record) {
+            if (!is_array($record)) {
+                continue;
+            }
+
+            $stringKeyedRecord = [];
+            foreach ($record as $key => $value) {
+                $stringKeyedRecord[is_string($key) ? $key : (string) $key] = $value;
+            }
+            $typedResult[] = $stringKeyedRecord;
+        }
+
+        return $typedResult;
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     */
+    private function hasMorePages(array $response, int $currentPage): bool
+    {
+        $resultInfo = $response['result_info'] ?? [];
+        if (!is_array($resultInfo)) {
+            return false;
+        }
+
+        $totalPages = $resultInfo['total_pages'] ?? 0;
+
+        return is_int($totalPages) && $totalPages > $currentPage;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $remoteRecords
+     */
+    private function processRecords(DnsDomain $domain, array $remoteRecords): void
+    {
+        $localRecordMaps = $this->buildLocalRecordMaps($domain);
+        $counters = $this->initializeCounters();
+
+        $counters = $this->processAllRemoteRecords($domain, $remoteRecords, $localRecordMaps, $counters);
+
+        $this->entityManager->flush();
+        $this->logSyncCompletion($domain, $counters);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function initializeCounters(): array
+    {
+        return ['create' => 0, 'update' => 0, 'skip' => 0, 'error' => 0];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $remoteRecords
+     * @param array{0: array<string, DnsRecord>, 1: array<string, DnsRecord>} $localRecordMaps
+     * @param array<string, int> $counters
+     * @return array<string, int>
+     */
+    private function processAllRemoteRecords(DnsDomain $domain, array $remoteRecords, array $localRecordMaps, array $counters): array
+    {
+        foreach ($remoteRecords as $remoteRecord) {
+            $counters = $this->processRemoteRecordSafely($domain, $remoteRecord, $localRecordMaps, $counters);
+        }
+
+        return $counters;
+    }
+
+    /**
+     * @param array<string, mixed> $remoteRecord
+     * @param array{0: array<string, DnsRecord>, 1: array<string, DnsRecord>} $localRecordMaps
+     * @param array<string, int> $counters
+     * @return array<string, int>
+     */
+    private function processRemoteRecordSafely(DnsDomain $domain, array $remoteRecord, array $localRecordMaps, array $counters): array
+    {
+        try {
+            return $this->processRemoteRecord($domain, $remoteRecord, $localRecordMaps, $counters);
+        } catch (\Throwable $e) {
+            $this->logger->error('处理DNS记录时出错', [
+                'record' => $remoteRecord['name'] ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+            ++$counters['error'];
+
+            return $counters;
+        }
+    }
+
+    /**
+     * @param array<string, int> $counters
+     */
+    private function logSyncCompletion(DnsDomain $domain, array $counters): void
+    {
+        $this->logger->info('域名DNS记录同步完成', [
+            'domain' => $domain->getName(),
+            'created' => $counters['create'],
+            'updated' => $counters['update'],
+            'skipped' => $counters['skip'],
+            'errors' => $counters['error'],
+        ]);
+    }
+
+    /**
+     * @return array{0: array<string, DnsRecord>, 1: array<string, DnsRecord>}
+     */
+    private function buildLocalRecordMaps(DnsDomain $domain): array
+    {
+        $localRecords = $this->recordRepository->findBy(['domain' => $domain]);
+        $localRecordMap = [];
+        $localRecordByCloudflareId = [];
+
+        foreach ($localRecords as $record) {
+            $key = $record->getType()->value . '_' . $record->getRecord();
+            $localRecordMap[$key] = $record;
+
+            if (null !== $record->getRecordId() && '' !== $record->getRecordId()) {
+                $localRecordByCloudflareId[$record->getRecordId()] = $record;
+            }
+        }
+
+        return [$localRecordMap, $localRecordByCloudflareId];
+    }
+
+    /**
+     * @param array<string, mixed>                                            $remoteRecord
+     * @param array{0: array<string, DnsRecord>, 1: array<string, DnsRecord>} $localRecordMaps
+     * @param array<string, int>                                              $counters
+     *
+     * @return array<string, int>
+     */
+    private function processRemoteRecord(DnsDomain $domain, array $remoteRecord, array $localRecordMaps, array $counters): array
+    {
+        return $this->recordSyncProcessor->processRemoteRecord($domain, $remoteRecord, $localRecordMaps, $counters);
     }
 }

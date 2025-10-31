@@ -1,28 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Tests\Command;
 
 use CloudflareDnsBundle\Command\SyncDomainInfoCommand;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Service\DomainSynchronizer;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractCommandTestCase;
 
-class SyncDomainInfoCommandTest extends TestCase
+/**
+ * @internal
+ */
+#[RunTestsInSeparateProcesses]
+#[CoversClass(SyncDomainInfoCommand::class)]
+final class SyncDomainInfoCommandTest extends AbstractCommandTestCase
 {
     private SyncDomainInfoCommand $command;
+
     private DomainSynchronizer&MockObject $domainSynchronizer;
+
     private CommandTester $commandTester;
 
-    protected function setUp(): void
+    protected function getCommandTester(): CommandTester
+    {
+        return $this->commandTester;
+    }
+
+    protected function onSetUp(): void
     {
         $this->domainSynchronizer = $this->createMock(DomainSynchronizer::class);
 
-        $this->command = new SyncDomainInfoCommand(
-            $this->domainSynchronizer
-        );
+        // 替换容器中的服务
+        self::getContainer()->set(DomainSynchronizer::class, $this->domainSynchronizer);
+
+        $command = self::getService(SyncDomainInfoCommand::class);
+        $this->assertInstanceOf(SyncDomainInfoCommand::class, $command);
+        $this->command = $command;
 
         $application = new Application();
         $application->add($this->command);
@@ -30,19 +49,21 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->commandTester = new CommandTester($this->command);
     }
 
-    public function test_execute_success_with_specific_domain(): void
+    public function testExecuteSuccessWithSpecificDomain(): void
     {
         $domain = $this->createDnsDomain();
 
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
             ->with('example.com')
-            ->willReturn([$domain]);
+            ->willReturn([$domain])
+        ;
 
         $this->domainSynchronizer->expects($this->once())
             ->method('syncDomainInfo')
-            ->with($domain, $this->anything())
-            ->willReturn(true);
+            ->with($domain, self::anything())
+            ->willReturn(true)
+        ;
 
         $result = $this->commandTester->execute([
             '--domain' => 'example.com',
@@ -52,7 +73,7 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->assertStringContainsString('同步完成', $this->commandTester->getDisplay());
     }
 
-    public function test_execute_success_all_domains(): void
+    public function testExecuteSuccessAllDomains(): void
     {
         $domain1 = $this->createDnsDomain();
         $domain2 = $this->createDnsDomain();
@@ -61,11 +82,13 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
             ->with(null)
-            ->willReturn([$domain1, $domain2]);
+            ->willReturn([$domain1, $domain2])
+        ;
 
         $this->domainSynchronizer->expects($this->exactly(2))
             ->method('syncDomainInfo')
-            ->willReturn(true);
+            ->willReturn(true)
+        ;
 
         $result = $this->commandTester->execute([]);
 
@@ -73,12 +96,13 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->assertStringContainsString('同步完成', $this->commandTester->getDisplay());
     }
 
-    public function test_execute_domain_not_found(): void
+    public function testExecuteDomainNotFound(): void
     {
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
             ->with('notfound.com')
-            ->willReturn([]);
+            ->willReturn([])
+        ;
 
         $result = $this->commandTester->execute([
             '--domain' => 'notfound.com',
@@ -88,12 +112,13 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->assertStringContainsString('未找到指定的域名', $this->commandTester->getDisplay());
     }
 
-    public function test_execute_no_domains_found(): void
+    public function testExecuteNoDomainsFound(): void
     {
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
             ->with(null)
-            ->willReturn([]);
+            ->willReturn([])
+        ;
 
         $result = $this->commandTester->execute([]);
 
@@ -101,7 +126,7 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->assertStringContainsString('没有找到任何域名', $this->commandTester->getDisplay());
     }
 
-    public function test_execute_with_sync_failures(): void
+    public function testExecuteWithSyncFailures(): void
     {
         $domain1 = $this->createDnsDomain();
         $domain2 = $this->createDnsDomain();
@@ -109,13 +134,15 @@ class SyncDomainInfoCommandTest extends TestCase
 
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
-            ->willReturn([$domain1, $domain2]);
+            ->willReturn([$domain1, $domain2])
+        ;
 
         $this->domainSynchronizer->expects($this->exactly(2))
             ->method('syncDomainInfo')
-            ->willReturnCallback(function($domain) {
-                return $domain->getName() !== 'failed.com';
-            });
+            ->willReturnCallback(function ($domain) {
+                return $domain instanceof DnsDomain && 'failed.com' !== $domain->getName();
+            })
+        ;
 
         $result = $this->commandTester->execute([]);
 
@@ -125,7 +152,7 @@ class SyncDomainInfoCommandTest extends TestCase
         $this->assertStringContainsString('失败: 1', $this->commandTester->getDisplay());
     }
 
-    public function test_execute_all_sync_failures(): void
+    public function testExecuteAllSyncFailures(): void
     {
         $domain1 = $this->createDnsDomain();
         $domain2 = $this->createDnsDomain();
@@ -133,11 +160,13 @@ class SyncDomainInfoCommandTest extends TestCase
 
         $this->domainSynchronizer->expects($this->once())
             ->method('findDomains')
-            ->willReturn([$domain1, $domain2]);
+            ->willReturn([$domain1, $domain2])
+        ;
 
         $this->domainSynchronizer->expects($this->exactly(2))
             ->method('syncDomainInfo')
-            ->willReturn(false);
+            ->willReturn(false)
+        ;
 
         $result = $this->commandTester->execute([]);
 
@@ -155,4 +184,23 @@ class SyncDomainInfoCommandTest extends TestCase
 
         return $domain;
     }
-} 
+
+    public function testOptionDomain(): void
+    {
+        $domain = $this->createDnsDomain();
+
+        $this->domainSynchronizer->expects($this->once())
+            ->method('findDomains')
+            ->with('example.com')
+            ->willReturn([$domain])
+        ;
+
+        $this->domainSynchronizer->expects($this->once())
+            ->method('syncDomainInfo')
+            ->willReturn(true)
+        ;
+
+        $result = $this->commandTester->execute(['--domain' => 'example.com']);
+        $this->assertEquals(0, $result);
+    }
+}

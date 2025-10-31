@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CloudflareDnsBundle\Command;
 
+use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Service\DomainSynchronizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -24,57 +27,88 @@ class SyncDomainInfoCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('domain', 'd', InputOption::VALUE_OPTIONAL, '只同步指定名称的域名');
+            ->addOption('domain', 'd', InputOption::VALUE_OPTIONAL, '只同步指定名称的域名')
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $specificDomain = $input->getOption('domain');
+        $safeDomain = is_string($specificDomain) ? $specificDomain : null;
 
-        // 查找指定域名或所有域名
-        $domains = $this->domainSynchronizer->findDomains($specificDomain);
+        $domains = $this->domainSynchronizer->findDomains($safeDomain);
 
-        if (empty($domains)) {
-            if ($specificDomain !== null) {
-                $io->error(sprintf('未找到指定的域名: %s', $specificDomain));
-                return Command::FAILURE;
-            } else {
-                $io->info('没有找到任何域名');
-                return Command::SUCCESS;
-            }
+        if (!$this->validateAndShowInfo($domains, $safeDomain, $io)) {
+            return $this->getCommandResult($domains, $safeDomain);
         }
 
-        if ($specificDomain !== null) {
+        return $this->syncAllDomains($domains, $io);
+    }
+
+    /**
+     * @param array<int, DnsDomain> $domains
+     */
+    private function validateAndShowInfo(array $domains, ?string $specificDomain, SymfonyStyle $io): bool
+    {
+        if ([] === $domains) {
+            if (null !== $specificDomain) {
+                $io->error(sprintf('未找到指定的域名: %s', $specificDomain));
+            } else {
+                $io->info('没有找到任何域名');
+            }
+
+            return false;
+        }
+
+        if (null !== $specificDomain) {
             $io->info(sprintf('只同步域名: %s', $specificDomain));
         } else {
             $io->info(sprintf('同步所有域名，共 %d 个', count($domains)));
         }
 
-        $successCount = 0;
-        $errorCount = 0;
+        return true;
+    }
 
+    /**
+     * @param array<int, DnsDomain> $domains
+     */
+    private function getCommandResult(array $domains, ?string $specificDomain): int
+    {
+        return [] === $domains && null !== $specificDomain
+            ? Command::FAILURE
+            : Command::SUCCESS;
+    }
+
+    /**
+     * @param array<int, DnsDomain> $domains
+     */
+    private function syncAllDomains(array $domains, SymfonyStyle $io): int
+    {
+        $results = ['success' => 0, 'error' => 0];
         $io->section('开始同步域名信息');
 
         foreach ($domains as $domain) {
             $io->text("处理域名：{$domain->getName()}");
 
-            // 同步域名信息
             $success = $this->domainSynchronizer->syncDomainInfo($domain, $io);
-
-            if ($success) {
-                $successCount++;
-            } else {
-                $errorCount++;
-            }
+            ++$results[$success ? 'success' : 'error'];
         }
 
-        if ($successCount > 0) {
-            $io->success("同步完成，成功: {$successCount}，失败: {$errorCount}");
-        } else {
-            $io->warning("没有同步任何域名，失败: {$errorCount}");
-        }
+        $this->displaySyncResults($io, $results);
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @param array{success: int, error: int} $results
+     */
+    private function displaySyncResults(SymfonyStyle $io, array $results): void
+    {
+        if ($results['success'] > 0) {
+            $io->success("同步完成，成功: {$results['success']}，失败: {$results['error']}");
+        } else {
+            $io->warning("没有同步任何域名，失败: {$results['error']}");
+        }
     }
 }
