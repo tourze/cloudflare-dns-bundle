@@ -13,6 +13,7 @@ use Tourze\DoctrineIndexedBundle\DoctrineIndexedBundle;
 use Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle;
 use Tourze\DoctrineTrackBundle\DoctrineTrackBundle;
 use Tourze\DoctrineUserBundle\DoctrineUserBundle;
+use Tourze\EasyAdminMenuBundle\EasyAdminMenuBundle;
 
 class CloudflareDnsBundle extends Bundle implements BundleDependencyInterface
 {
@@ -26,6 +27,7 @@ class CloudflareDnsBundle extends Bundle implements BundleDependencyInterface
             DoctrineUserBundle::class => ['all' => true],
             DoctrineTrackBundle::class => ['all' => true],
             DoctrineIndexedBundle::class => ['all' => true],
+            EasyAdminMenuBundle::class => ['all' => true],
         ];
     }
 }
