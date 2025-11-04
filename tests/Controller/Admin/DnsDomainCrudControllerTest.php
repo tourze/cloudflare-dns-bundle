@@ -6,6 +6,7 @@ namespace CloudflareDnsBundle\Tests\Controller\Admin;
 
 use CloudflareDnsBundle\Controller\Admin\DnsDomainCrudController;
 use CloudflareDnsBundle\Entity\DnsDomain;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\PHPUnitSymfonyWebTest\AbstractEasyAdminControllerTestCase;
@@ -36,14 +37,11 @@ final class DnsDomainCrudControllerTest extends AbstractEasyAdminControllerTestC
 
     public function testIndexWithAuthentication(): void
     {
-        $client = self::createClientWithDatabase();
-        $this->createAdminUser('admin@example.com', 'admin123');
-        $this->loginAsAdmin($client, 'admin@example.com', 'admin123');
+        $client = $this->createAuthenticatedClient();
+        $url = $this->generateAdminUrl(Action::INDEX);
 
-        $client->request('GET', '/admin');
+        $client->request('GET', $url);
 
-        // 设置静态客户端以支持响应断言
-        self::getClient($client);
         $this->assertResponseIsSuccessful();
     }
 

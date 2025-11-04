@@ -93,14 +93,11 @@ final class IamKeyCrudControllerTest extends AbstractEasyAdminControllerTestCase
 
     public function testIndexWithAuthentication(): void
     {
-        $client = self::createClientWithDatabase();
-        $this->createAdminUser('admin@example.com', 'admin123');
-        $this->loginAsAdmin($client, 'admin@example.com', 'admin123');
+        $client = $this->createAuthenticatedClient();
+        $url = $this->generateAdminUrl(Action::INDEX);
 
-        $client->request('GET', '/admin');
+        $client->request('GET', $url);
 
-        // 设置静态客户端以支持响应断言
-        self::getClient($client);
         $this->assertResponseIsSuccessful();
     }
 
