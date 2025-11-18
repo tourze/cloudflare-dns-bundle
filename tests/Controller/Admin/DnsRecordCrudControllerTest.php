@@ -18,15 +18,6 @@ use Tourze\PHPUnitSymfonyWebTest\AbstractEasyAdminControllerTestCase;
 #[RunTestsInSeparateProcesses]
 final class DnsRecordCrudControllerTest extends AbstractEasyAdminControllerTestCase
 {
-    public function testGetEntityFqcn(): void
-    {
-        $client = self::createClient();
-        $client->request('GET', '/admin');
-
-        // 验证控制器能正确处理实体类型
-        $this->assertSame(DnsRecord::class, DnsRecordCrudController::getEntityFqcn());
-    }
-
     public function testIndexWithoutAuthentication(): void
     {
         $client = self::createClient();

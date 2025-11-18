@@ -74,15 +74,6 @@ final class IamKeyCrudControllerTest extends AbstractEasyAdminControllerTestCase
         $this->assertSame(IamKey::class, IamKeyCrudController::getEntityFqcn());
     }
 
-    public function testGetEntityFqcn(): void
-    {
-        $client = self::createClient();
-        $client->request('GET', '/admin');
-
-        // 验证控制器能正确处理实体类型
-        $this->assertSame(IamKey::class, IamKeyCrudController::getEntityFqcn());
-    }
-
     public function testIndexWithoutAuthentication(): void
     {
         $client = self::createClient();
