@@ -265,7 +265,7 @@ class MyListener
 该 Bundle 通过 Cloudflare API 支持批量操作：
 
 ```php
-use CloudflareDnsBundle\Service\CloudflareHttpClient;
+use CloudflareDnsBundle\Client\CloudflareHttpClient;
 
 $operations = [
     'posts' => [$newRecord1, $newRecord2],

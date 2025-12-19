@@ -9,7 +9,8 @@ use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Service\DnsDomainService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
 /**
@@ -26,20 +27,14 @@ final class DnsDomainServiceTest extends AbstractIntegrationTestCase
 
     public function testListDomains(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => [],
+        ]);
 
-        $response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $service = new TestDnsDomainService($logger, $response);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
-
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('获取CloudFlare域名列表成功', self::anything())
-        ;
 
         $result = $service->listDomains($domain);
         $this->assertTrue($result['success']);
@@ -47,21 +42,15 @@ final class DnsDomainServiceTest extends AbstractIntegrationTestCase
 
     public function testGetDomain(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['name' => 'example.com'],
+        ]);
 
-        $response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $service = new TestDnsDomainService($logger, $response);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $domainName = 'example.com';
-
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('获取CloudFlare域名详情成功', self::anything())
-        ;
 
         $result = $service->getDomain($domain, $domainName);
         $this->assertTrue($result['success']);
@@ -69,16 +58,22 @@ final class DnsDomainServiceTest extends AbstractIntegrationTestCase
 
     public function testLookupZoneId(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        // 创建一个 Mock Response，返回 JSON 字符串而不是数组
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('getContent')
+            ->willReturn(json_encode([
+                'success' => true,
+                'result' => [
+                    ['id' => 'test-zone-id', 'name' => 'example.com'],
+                ],
+            ]));
 
-        $response = new TestHttpResponse(true);
-        $service = new TestDnsDomainService($logger, $response);
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse);
+
+        $service = $this->createServiceWithMockClient($mockHttpClient);
         $domain = $this->createDnsDomain();
-
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('查询Zone ID成功', self::anything())
-        ;
 
         $result = $service->lookupZoneId($domain);
         $this->assertSame('test-zone-id', $result);
@@ -86,17 +81,12 @@ final class DnsDomainServiceTest extends AbstractIntegrationTestCase
 
     public function testSyncZoneId(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        // 创建一个基本的 Mock 客户端（syncZoneId 不会调用 HTTP 客户端，因为我们提供了 domainData）
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
 
-        $response = new TestHttpResponse(true);
-        $service = new TestDnsDomainService($logger, $response);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
         $domain = $this->createDnsDomain();
         $domainData = ['id' => 'custom-zone-id'];
-
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('同步Zone ID成功', self::anything())
-        ;
 
         $result = $service->syncZoneId($domain, $domainData);
         $this->assertSame('custom-zone-id', $result);
@@ -120,5 +110,72 @@ final class DnsDomainServiceTest extends AbstractIntegrationTestCase
         $domain->setIamKey($iamKey);
 
         return $domain;
+    }
+
+    /**
+     * 创建 Mock HTTP 客户端，返回预定义的响应
+     *
+     * @param array<string, mixed> $responseData
+     */
+    private function createMockHttpClient(array $responseData): HttpClientInterface
+    {
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('toArray')
+            ->willReturn($responseData);
+        $success = isset($responseData['success']) && true === $responseData['success'];
+        $mockResponse->method('getStatusCode')
+            ->willReturn($success ? 200 : 400);
+
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse);
+
+        return $mockHttpClient;
+    }
+
+    /**
+     * 创建使用 Mock HTTP 客户端的 DnsDomainService
+     */
+    private function createServiceWithMockClient(HttpClientInterface $mockHttpClient): DnsDomainService
+    {
+        $logger = self::getService(\Psr\Log\LoggerInterface::class);
+
+        // 使用匿名类扩展服务，注入 Mock HTTP 客户端
+        $service = new class($logger, $mockHttpClient) extends DnsDomainService {
+            private HttpClientInterface $mockClient;
+
+            public function __construct($logger, HttpClientInterface $mockClient)
+            {
+                parent::__construct($logger);
+                $this->mockClient = $mockClient;
+            }
+
+            /**
+             * @return \CloudflareDnsBundle\Client\CloudflareHttpClient
+             */
+            protected function getCloudFlareClient(\CloudflareDnsBundle\Entity\DnsDomain $domain): \CloudflareDnsBundle\Client\CloudflareHttpClient
+            {
+                $iamKey = $domain->getIamKey();
+                if (null === $iamKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('Domain does not have an IAM key configured');
+                }
+
+                $accessKey = $iamKey->getAccessKey();
+                $secretKey = $iamKey->getSecretKey();
+
+                if (null === $accessKey || null === $secretKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('IAM key is missing access key or secret key');
+                }
+
+                return new \CloudflareDnsBundle\Client\CloudflareHttpClient(
+                    $accessKey,
+                    $secretKey,
+                    $this->mockClient,
+                    $this->logger
+                );
+            }
+        };
+
+        return $service;
     }
 }

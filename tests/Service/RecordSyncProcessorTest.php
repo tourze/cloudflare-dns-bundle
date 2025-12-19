@@ -18,7 +18,7 @@ use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
  */
 #[CoversClass(RecordSyncProcessor::class)]
 #[RunTestsInSeparateProcesses]
-class RecordSyncProcessorTest extends AbstractIntegrationTestCase
+final class RecordSyncProcessorTest extends AbstractIntegrationTestCase
 {
     private RecordSyncProcessor $processor;
 

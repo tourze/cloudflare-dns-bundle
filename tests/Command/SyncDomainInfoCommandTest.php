@@ -44,7 +44,7 @@ final class SyncDomainInfoCommandTest extends AbstractCommandTestCase
         $this->command = $command;
 
         $application = new Application();
-        $application->add($this->command);
+        $application->addCommand($this->command);
 
         $this->commandTester = new CommandTester($this->command);
     }

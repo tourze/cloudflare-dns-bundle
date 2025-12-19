@@ -7,7 +7,7 @@ namespace CloudflareDnsBundle\Message;
 /**
  * 从远程同步域名DNS记录的消息
  */
-class SyncDnsDomainsFromRemoteMessage
+final class SyncDnsDomainsFromRemoteMessage
 {
     public function __construct(
         private readonly int $domainId,

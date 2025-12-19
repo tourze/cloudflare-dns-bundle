@@ -21,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: self::NAME, description: '同步域名信息到本地')]
 #[WithMonologChannel(channel: 'cloudflare_dns')]
-class SyncDomainRecordToLocalCommand extends Command
+final class SyncDomainRecordToLocalCommand extends Command
 {
     public const NAME = 'cloudflare:sync-domain-record-to-local';
 

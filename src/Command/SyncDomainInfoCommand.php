@@ -14,7 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: self::NAME, description: '同步域名信息（状态、过期时间、Zone ID等）')]
-class SyncDomainInfoCommand extends Command
+final class SyncDomainInfoCommand extends Command
 {
     public const NAME = 'cloudflare:sync-domain-info';
 

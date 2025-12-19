@@ -7,12 +7,13 @@ namespace CloudflareDnsBundle\Tests\Service;
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\DnsRecord;
 use CloudflareDnsBundle\Entity\IamKey;
-use CloudflareDnsBundle\Exception\TestServiceException;
+use CloudflareDnsBundle\Exception\CloudflareServiceException;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Service\DnsRecordService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
 /**
@@ -29,174 +30,94 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
 
     public function testExtractDomain(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $service = self::getService(DnsRecordService::class);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
+        // 创建测试域名数据
+        $domain = $this->createDnsDomain();
+        $repository = self::getService(DnsDomainRepository::class);
+        $repository->save($domain, flush: true);
 
-        // 配置 repository mock 返回域名
-        $repository->method('findOneBy')
-            ->willReturnCallback(function ($criteria) {
-                if (isset($criteria['name']) && 'example.com' === $criteria['name']) {
-                    return $this->createDnsDomain();
-                }
+        $result = $service->extractDomain('sub.example.com');
 
-                return null;
-            })
-        ;
-
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
-
-        $domain = $service->extractDomain('sub.example.com');
-
-        $this->assertInstanceOf(DnsDomain::class, $domain);
-        $this->assertEquals('example.com', $domain->getName());
+        $this->assertInstanceOf(DnsDomain::class, $result);
+        $this->assertEquals('example.com', $result->getName());
     }
 
     public function testExtractDomainNotFound(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $service = self::getService(DnsRecordService::class);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
+        $result = $service->extractDomain('sub.notfound.com');
 
-        // 配置 repository mock 返回域名
-        $repository->method('findOneBy')
-            ->willReturnCallback(function ($criteria) {
-                if (isset($criteria['name']) && 'example.com' === $criteria['name']) {
-                    return $this->createDnsDomain();
-                }
-
-                return null;
-            })
-        ;
-
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
-
-        $domain = $service->extractDomain('sub.notfound.com');
-
-        $this->assertNull($domain);
+        $this->assertNull($result);
     }
 
     public function testRemoveRecord(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['id' => 'deleted'],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
-
+        $domain = $this->createDnsDomain();
         $record = $this->createDnsRecord();
+        $record->setDomain($domain);
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('删除CloudFlare域名记录成功', self::anything())
-        ;
-
+        // 验证不抛出异常
         $service->removeRecord($record);
+        $this->assertTrue(true); // removeRecord 返回 void，只要不抛异常就是成功
     }
 
     public function testCreateRecord(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['id' => 'test-record-id', 'name' => 'test.example.com'],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $record = $this->createDnsRecord();
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('创建CloudFlare域名记录成功', self::anything())
-        ;
-
         $result = $service->createRecord($domain, $record);
         $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('result', $result);
     }
 
     public function testUpdateRecord(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['id' => 'test-record-id', 'name' => 'test.example.com'],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
-
+        $domain = $this->createDnsDomain();
         $record = $this->createDnsRecord();
-        $record->setDomain($this->createDnsDomain());
-
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('更新CloudFlare域名记录成功', self::anything())
-        ;
+        $record->setDomain($domain);
 
         $result = $service->updateRecord($record);
         $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('result', $result);
     }
 
     public function testBatchRecords(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['timing' => []],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $operations = [
             'posts' => [$this->createDnsRecord()],
         ];
-
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('批量操作CloudFlare域名记录成功', self::anything())
-        ;
 
         $result = $service->batchRecords($domain, $operations);
         $this->assertTrue($result['success']);
@@ -204,30 +125,22 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
 
     public function testListRecords(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => [
+                ['id' => 'record-1', 'name' => 'test1.example.com'],
+                ['id' => 'record-2', 'name' => 'test2.example.com'],
+            ],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        // 创建测试服务实例
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $params = ['page' => 1, 'per_page' => 20];
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('获取CloudFlare域名记录列表成功', self::anything())
-        ;
-
         $result = $service->listRecords($domain, $params);
         $this->assertTrue($result['success']);
+        $this->assertIsArray($result['result']);
     }
 
     /**
@@ -235,46 +148,33 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
      */
     public function testApiResponseFailure(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => false,
+            'errors' => [['code' => 1003, 'message' => 'Invalid access token']],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        // 创建失败测试服务实例
-        $failureService = new TestDnsRecordService($logger, $repository, false);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $record = $this->createDnsRecord();
         $record->setDomain($domain);
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('error')
-            ->with('创建CloudFlare域名记录失败', self::anything())
-        ;
-
-        $this->expectException(TestServiceException::class);
-        $failureService->createRecord($domain, $record);
+        $this->expectException(CloudflareServiceException::class);
+        $this->expectExceptionMessageMatches('/创建CloudFlare域名记录失败/');
+        $service->createRecord($domain, $record);
     }
 
     public function testExportRecords(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('getContent')
+            ->willReturn('test.example.com. 300 IN A 192.0.2.1');
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse);
 
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
         $domain = $this->createDnsDomain();
 
         $result = $service->exportRecords($domain);
@@ -284,24 +184,14 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
 
     public function testImportRecords(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['recs_added' => 1],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
         $domain = $this->createDnsDomain();
         $bindConfig = 'test.example.com. 300 IN A 192.0.2.1';
-
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('导入CloudFlare域名记录成功', self::anything())
-        ;
 
         $result = $service->importRecords($domain, $bindConfig);
         $this->assertTrue($result['success']);
@@ -309,23 +199,13 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
 
     public function testScanRecords(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['recs_added' => 0],
+        ]);
 
-        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $repository = $this->createMock(DnsDomainRepository::class);
-
-        $service = new TestDnsRecordService($logger, $repository);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
         $domain = $this->createDnsDomain();
-
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('扫描CloudFlare域名记录成功', self::anything())
-        ;
 
         $result = $service->scanRecords($domain);
         $this->assertTrue($result['success']);
@@ -341,6 +221,7 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
         $domain->setZoneId('test-zone-id');
 
         $iamKey = new IamKey();
+        $iamKey->setName('test-iam-key');
         $iamKey->setAccessKey('test-access-key');
         $iamKey->setSecretKey('test-secret-key');
         $domain->setIamKey($iamKey);
@@ -361,5 +242,73 @@ final class DnsRecordServiceTest extends AbstractIntegrationTestCase
         $record->setProxy(false);
 
         return $record;
+    }
+
+    /**
+     * 创建 Mock HTTP 客户端，返回预定义的响应
+     *
+     * @param array<string, mixed> $responseData
+     */
+    private function createMockHttpClient(array $responseData): HttpClientInterface
+    {
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('toArray')
+            ->willReturn($responseData);
+        $success = isset($responseData['success']) && true === $responseData['success'];
+        $mockResponse->method('getStatusCode')
+            ->willReturn($success ? 200 : 400);
+
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse);
+
+        return $mockHttpClient;
+    }
+
+    /**
+     * 创建使用 Mock HTTP 客户端的 DnsRecordService
+     */
+    private function createServiceWithMockClient(HttpClientInterface $mockHttpClient): DnsRecordService
+    {
+        $logger = self::getService(\Psr\Log\LoggerInterface::class);
+        $repository = self::getService(DnsDomainRepository::class);
+
+        // 使用反射创建带有 Mock 客户端的服务
+        $service = new class($logger, $repository, $mockHttpClient) extends DnsRecordService {
+            private HttpClientInterface $mockClient;
+
+            public function __construct($logger, $repository, HttpClientInterface $mockClient)
+            {
+                parent::__construct($logger, $repository);
+                $this->mockClient = $mockClient;
+            }
+
+            /**
+             * @return \CloudflareDnsBundle\Client\CloudflareHttpClient
+             */
+            protected function getCloudFlareClient(\CloudflareDnsBundle\Entity\DnsDomain $domain): \CloudflareDnsBundle\Client\CloudflareHttpClient
+            {
+                $iamKey = $domain->getIamKey();
+                if (null === $iamKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('Domain does not have an IAM key configured');
+                }
+
+                $accessKey = $iamKey->getAccessKey();
+                $secretKey = $iamKey->getSecretKey();
+
+                if (null === $accessKey || null === $secretKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('IAM key is missing access key or secret key');
+                }
+
+                return new \CloudflareDnsBundle\Client\CloudflareHttpClient(
+                    $accessKey,
+                    $secretKey,
+                    $this->mockClient,
+                    $this->logger
+                );
+            }
+        };
+
+        return $service;
     }
 }

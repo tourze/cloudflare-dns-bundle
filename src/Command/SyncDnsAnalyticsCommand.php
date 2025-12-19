@@ -20,7 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: self::NAME, description: '同步 Cloudflare DNS 分析数据')]
 #[WithMonologChannel(channel: 'cloudflare_dns')]
-class SyncDnsAnalyticsCommand extends Command
+final class SyncDnsAnalyticsCommand extends Command
 {
     public const NAME = 'cloudflare:sync-dns-analytics';
 

@@ -16,7 +16,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 #[AsEntityListener(event: Events::prePersist, method: 'prePersist', entity: DnsRecord::class)]
 #[AsEntityListener(event: Events::preUpdate, method: 'preUpdate', entity: DnsRecord::class)]
 #[Autoconfigure(public: true)]
-class DnsRecordSyncListener
+final class DnsRecordSyncListener
 {
     /**
      * 创建记录前

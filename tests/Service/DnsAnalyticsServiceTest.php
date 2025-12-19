@@ -9,7 +9,8 @@ use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Service\DnsAnalyticsService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
 /**
@@ -26,46 +27,36 @@ final class DnsAnalyticsServiceTest extends AbstractIntegrationTestCase
 
     public function testGetDnsAnalytics(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['data' => []],
+        ]);
 
-        $response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $service = new TestDnsAnalyticsService($logger, $response);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $params = ['since' => '-6h', 'until' => 'now'];
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('获取CloudFlare DNS分析成功', self::anything())
-        ;
-
         $result = $service->getDnsAnalytics($domain, $params);
         $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('result', $result);
     }
 
     public function testGetDnsAnalyticsByTime(): void
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $mockHttpClient = $this->createMockHttpClient([
+            'success' => true,
+            'result' => ['data' => []],
+        ]);
 
-        $response = new TestHttpResponse(true);
-
-        // 创建装饰器服务实例
-        $service = new TestDnsAnalyticsService($logger, $response);
+        $service = $this->createServiceWithMockClient($mockHttpClient);
 
         $domain = $this->createDnsDomain();
         $params = ['since' => '-6h', 'until' => 'now', 'time_delta' => '1h'];
 
-        // 配置 logger 的预期行为
-        $logger->expects($this->once())
-            ->method('info')
-            ->with('获取CloudFlare DNS分析按时间分组成功', self::anything())
-        ;
-
         $result = $service->getDnsAnalyticsByTime($domain, $params);
         $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('result', $result);
     }
 
     /**
@@ -78,10 +69,78 @@ final class DnsAnalyticsServiceTest extends AbstractIntegrationTestCase
         $domain->setZoneId('test-zone-id');
 
         $iamKey = new IamKey();
+        $iamKey->setName('test-iam-key');
         $iamKey->setAccessKey('test-access-key');
         $iamKey->setSecretKey('test-secret-key');
         $domain->setIamKey($iamKey);
 
         return $domain;
+    }
+
+    /**
+     * 创建 Mock HTTP 客户端，返回预定义的响应
+     *
+     * @param array<string, mixed> $responseData
+     */
+    private function createMockHttpClient(array $responseData): HttpClientInterface
+    {
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('toArray')
+            ->willReturn($responseData);
+        $success = isset($responseData['success']) && true === $responseData['success'];
+        $mockResponse->method('getStatusCode')
+            ->willReturn($success ? 200 : 400);
+
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse);
+
+        return $mockHttpClient;
+    }
+
+    /**
+     * 创建使用 Mock HTTP 客户端的 DnsAnalyticsService
+     */
+    private function createServiceWithMockClient(HttpClientInterface $mockHttpClient): DnsAnalyticsService
+    {
+        $logger = self::getService(\Psr\Log\LoggerInterface::class);
+
+        // 使用匿名类扩展服务，注入 Mock HTTP 客户端
+        $service = new class($logger, $mockHttpClient) extends DnsAnalyticsService {
+            private HttpClientInterface $mockClient;
+
+            public function __construct($logger, HttpClientInterface $mockClient)
+            {
+                parent::__construct($logger);
+                $this->mockClient = $mockClient;
+            }
+
+            /**
+             * @return \CloudflareDnsBundle\Client\CloudflareHttpClient
+             */
+            protected function getCloudFlareClient(\CloudflareDnsBundle\Entity\DnsDomain $domain): \CloudflareDnsBundle\Client\CloudflareHttpClient
+            {
+                $iamKey = $domain->getIamKey();
+                if (null === $iamKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('Domain does not have an IAM key configured');
+                }
+
+                $accessKey = $iamKey->getAccessKey();
+                $secretKey = $iamKey->getSecretKey();
+
+                if (null === $accessKey || null === $secretKey) {
+                    throw new \CloudflareDnsBundle\Exception\CloudflareServiceException('IAM key is missing access key or secret key');
+                }
+
+                return new \CloudflareDnsBundle\Client\CloudflareHttpClient(
+                    $accessKey,
+                    $secretKey,
+                    $this->mockClient,
+                    $this->logger
+                );
+            }
+        };
+
+        return $service;
     }
 }

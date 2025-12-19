@@ -6,7 +6,7 @@ namespace CloudflareDnsBundle\DependencyInjection;
 
 use Tourze\SymfonyDependencyServiceLoader\AutoExtension;
 
-class CloudflareDnsExtension extends AutoExtension
+final class CloudflareDnsExtension extends AutoExtension
 {
     protected function getConfigDir(): string
     {

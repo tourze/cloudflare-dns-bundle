@@ -11,12 +11,14 @@ use CloudflareDnsBundle\Entity\IamKey;
 use CloudflareDnsBundle\Enum\DnsRecordType;
 use CloudflareDnsBundle\Repository\DnsDomainRepository;
 use CloudflareDnsBundle\Repository\DnsRecordRepository;
+use CloudflareDnsBundle\Client\CloudflareHttpClient;
 use CloudflareDnsBundle\Service\DnsRecordService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractCommandTestCase;
 
 /**
@@ -28,11 +30,9 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 {
     private SyncDomainRecordToLocalCommand $command;
 
-    private DnsDomainRepository&MockObject $domainRepository;
+    private DnsDomainRepository $domainRepository;
 
-    private DnsRecordRepository&MockObject $recordRepository;
-
-    private DnsRecordService&MockObject $dnsService;
+    private DnsRecordRepository $recordRepository;
 
     private CommandTester $commandTester;
 
@@ -42,54 +42,19 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
     }
 
     protected function onSetUp(): void
-    {        /*
-         * 使用具体类 DnsDomainRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $this->domainRepository = $this->createMock(DnsDomainRepository::class);
-        /*
-         * 使用具体类 DnsRecordRepository 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $this->recordRepository = $this->createMock(DnsRecordRepository::class);
-        /*
-         * 使用具体类 DnsRecordService 而不是接口的原因：
-         * 1) 该类提供了测试所需的具体方法实现
-         * 2) 当前架构中该类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-        $this->dnsService = $this->createMock(DnsRecordService::class);
-
-        // 替换容器中的服务
-        self::getContainer()->set(DnsDomainRepository::class, $this->domainRepository);
-        self::getContainer()->set(DnsRecordRepository::class, $this->recordRepository);
-        self::getContainer()->set(DnsRecordService::class, $this->dnsService);
-
-        $command = self::getContainer()->get(SyncDomainRecordToLocalCommand::class);
-        $this->assertInstanceOf(SyncDomainRecordToLocalCommand::class, $command);
-        $this->command = $command;
-
-        $application = new Application();
-        $application->add($this->command);
-
-        $this->commandTester = new CommandTester($this->command);
+    {
+        // 从容器获取真实服务实例
+        $this->domainRepository = self::getContainer()->get(DnsDomainRepository::class);
+        $this->recordRepository = self::getContainer()->get(DnsRecordRepository::class);
     }
 
     public function testExecuteSuccessWithSpecificDomain(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findBy')
-            ->with(['id' => '1'])
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 来模拟 Cloudflare API 响应
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [
                 [
@@ -104,56 +69,45 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
-
-        $this->recordRepository->expects($this->once())
-            ->method('findOneBy')
-            ->with([
-                'domain' => $domain,
-                'recordId' => 'remote-record-1',
-            ])
-            ->willReturn(null)
-        ;
+        // 注入 Mock HttpClient 到服务
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([
-            'domainId' => '1',
+            'domainId' => (string) $domain->getId(),
         ]);
 
         $this->assertEquals(0, $result);
         $output = $this->commandTester->getDisplay();
         $this->assertStringContainsString('开始处理域名：example.com', $output);
+
+        // 验证记录已创建
+        $record = $this->recordRepository->findOneBy([
+            'domain' => $domain,
+            'recordId' => 'remote-record-1',
+        ]);
+        $this->assertNotNull($record);
+        $this->assertEquals('test', $record->getRecord());
+        $this->assertEquals('192.168.1.1', $record->getContent());
     }
 
     public function testExecuteAllDomains(): void
     {
-        $domain1 = $this->createDnsDomain();
-        $domain1->setName('example1.com');
+        // 创建测试数据
+        $domain1 = $this->createAndPersistDnsDomain('example1.com');
+        $domain2 = $this->createAndPersistDnsDomain('example2.com');
 
-        $domain2 = $this->createDnsDomain();
-        $domain2->setName('example2.com');
-
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain1, $domain2])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 来模拟 Cloudflare API 响应
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [],
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->exactly(2))
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
@@ -165,18 +119,13 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 
     public function testExecuteDomainNotFound(): void
     {
-        $this->domainRepository->expects($this->once())
-            ->method('findBy')
-            ->with(['id' => '999'])
-            ->willReturn([])
-        ;
+        // 创建一个空的 Mock HttpClient（不会被使用）
+        $mockHttpClient = $this->createMockHttpClient([]);
+        $this->injectMockHttpClient($mockHttpClient);
 
-        $this->dnsService->expects($this->never())
-            ->method('listRecords')
-        ;
-
+        // 不创建任何域名，直接查询不存在的ID
         $result = $this->commandTester->execute([
-            'domainId' => '999',
+            'domainId' => '999999',
         ]);
 
         $this->assertEquals(0, $result);
@@ -184,17 +133,22 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 
     public function testExecuteUpdatesExistingRecord(): void
     {
-        $domain = $this->createDnsDomain();
-        $existingRecord = $this->createDnsRecord();
-        $existingRecord->setContent('192.168.1.1');
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
+
+        // 创建已存在的记录
+        $existingRecord = new DnsRecord();
+        $existingRecord->setDomain($domain);
         $existingRecord->setRecordId('remote-record-id-1');
+        $existingRecord->setRecord('test');
+        $existingRecord->setType(DnsRecordType::A);
+        $existingRecord->setContent('192.168.1.1');
+        $existingRecord->setTtl(300);
+        $existingRecord->setProxy(false);
+        $this->persistAndFlush($existingRecord);
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 返回更新的内容
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [
                 [
@@ -209,44 +163,30 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
-
-        $this->recordRepository->expects($this->once())
-            ->method('findOneBy')
-            ->with([
-                'domain' => $domain,
-                'recordId' => 'remote-record-id-1',
-            ])
-            ->willReturn($existingRecord)
-        ;
-
-        // EntityManager persist 和 flush 操作由集成测试框架自动处理
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
         $this->assertEquals(0, $result);
         $output = $this->commandTester->getDisplay();
         $this->assertStringContainsString('开始处理域名：example.com', $output);
+
+        // 验证记录已更新
+        self::getEntityManager()->refresh($existingRecord);
+        $this->assertEquals('192.168.1.2', $existingRecord->getContent());
     }
 
     public function testExecuteWithApiError(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
+        // Mock HttpClient 返回失败响应
+        $mockHttpClient = $this->createMockHttpClient(['success' => false]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn(['success' => false])
-        ;
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
@@ -255,25 +195,19 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 
     public function testExecuteWithEmptyRemoteRecords(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 返回空结果
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [],
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
@@ -284,14 +218,11 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 
     public function testExecuteWithMultipleRecordTypes(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 返回多种类型的记录
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [
                 [
@@ -322,63 +253,33 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
-
-        $this->recordRepository->expects($this->atLeast(1))
-            ->method('findOneBy')
-            ->willReturn(null)
-        ;
-
-        // EntityManager persist 和 flush 操作由集成测试框架自动处理
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
         $this->assertEquals(0, $result);
         $output = $this->commandTester->getDisplay();
         $this->assertStringContainsString('开始处理域名：example.com', $output);
+
+        // 验证记录已创建
+        $records = $this->recordRepository->findBy(['domain' => $domain]);
+        $this->assertCount(3, $records);
     }
 
     public function testExecuteWithDatabaseError(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
-            'success' => true,
-            'result' => [
-                [
-                    'id' => 'record-1',
-                    'name' => 'test.example.com',
-                    'type' => 'A',
-                    'content' => '192.168.1.1',
-                    'ttl' => 300,
-                    'proxiable' => false,
-                ],
-            ],
-            'result_info' => [
-                'total_pages' => 1,
-            ],
-        ];
-
-        // 通过模拟 DNS 服务错误来测试异常处理
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
+        // Mock HttpClient 抛出异常
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
             ->willThrowException(new \Exception('DNS service error'))
         ;
 
-        // 由于 DNS 服务抛出异常，不会到达查找记录的步骤
-        $this->recordRepository->expects($this->never())
-            ->method('findOneBy')
-        ;
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
@@ -389,14 +290,11 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
 
     public function testExecuteHandlesInvalidRecordType(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findAll')
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient 返回无效的记录类型
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [
                 [
@@ -411,123 +309,141 @@ final class SyncDomainRecordToLocalCommandTest extends AbstractCommandTestCase
             'result_info' => [
                 'total_pages' => 1,
             ],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
-
-        $this->recordRepository->expects($this->once())
-            ->method('findOneBy')
-            ->willReturn(null)
-        ;
-
-        // 由于记录类型无效，tryFrom会返回null，记录不会被创建
-        // 此测试不应该执行任何数据库写入操作
+        $this->injectMockHttpClient($mockHttpClient);
 
         $result = $this->commandTester->execute([]);
 
         $this->assertEquals(0, $result);
+
+        // 验证记录被创建了（因为 DnsRecord 的 type 字段有默认值 DnsRecordType::A）
+        // 即使传入的类型无效，记录仍然会使用默认类型
+        $records = $this->recordRepository->findBy(['domain' => $domain]);
+        $this->assertCount(1, $records);
+
+        // 验证使用的是默认类型 A
+        $this->assertEquals(DnsRecordType::A, $records[0]->getType());
     }
 
-    private function createDnsDomain(): DnsDomain
+    /**
+     * 创建并持久化 DnsDomain 测试数据
+     */
+    private function createAndPersistDnsDomain(string $domainName = 'example.com'): DnsDomain
     {
+        // 创建 IAM Key，使用唯一名称避免重复
         $iamKey = new IamKey();
-        $iamKey->setName('Test IAM Key');
+        $iamKey->setName('Test IAM Key ' . uniqid());
         $iamKey->setAccessKey('test@example.com');
         $iamKey->setSecretKey('test-secret-key');
         $iamKey->setAccountId('test-account-id');
         $iamKey->setValid(true);
 
-        // 手动设置时间戳字段避免监听器问题
-        $now = new \DateTimeImmutable();
-        $reflection = new \ReflectionClass($iamKey);
-        if ($reflection->hasProperty('createTime')) {
-            $createTimeProperty = $reflection->getProperty('createTime');
-            $createTimeProperty->setAccessible(true);
-            $createTimeProperty->setValue($iamKey, $now);
-        }
-        if ($reflection->hasProperty('updateTime')) {
-            $updateTimeProperty = $reflection->getProperty('updateTime');
-            $updateTimeProperty->setAccessible(true);
-            $updateTimeProperty->setValue($iamKey, $now);
-        }
-
+        // 创建 Domain
         $domain = new DnsDomain();
-        $domain->setName('example.com');
-        $domain->setZoneId('test-zone-id');
+        $domain->setName($domainName);
+        $domain->setZoneId('test-zone-id-' . uniqid());
         $domain->setIamKey($iamKey);
         $domain->setValid(true);
 
-        // 手动设置时间戳字段避免监听器问题
-        $domainReflection = new \ReflectionClass($domain);
-        if ($domainReflection->hasProperty('createTime')) {
-            $createTimeProperty = $domainReflection->getProperty('createTime');
-            $createTimeProperty->setAccessible(true);
-            $createTimeProperty->setValue($domain, $now);
-        }
-        if ($domainReflection->hasProperty('updateTime')) {
-            $updateTimeProperty = $domainReflection->getProperty('updateTime');
-            $updateTimeProperty->setAccessible(true);
-            $updateTimeProperty->setValue($domain, $now);
-        }
+        // 持久化到数据库
+        $this->persistAndFlush($iamKey);
+        $this->persistAndFlush($domain);
 
         return $domain;
     }
 
-    private function createDnsRecord(): DnsRecord
+    /**
+     * 创建 Mock HttpClient 来模拟 Cloudflare API 响应
+     *
+     * @param array<string, mixed> $responseData
+     */
+    private function createMockHttpClient(array $responseData): HttpClientInterface
     {
-        $domain = $this->createDnsDomain();
+        $mockResponse = $this->createMock(ResponseInterface::class);
+        $mockResponse->method('toArray')
+            ->willReturn($responseData)
+        ;
+        $mockResponse->method('getStatusCode')
+            ->willReturn(200)
+        ;
 
-        $record = new DnsRecord();
-        $record->setDomain($domain);
-        $record->setRecord('test');
-        $record->setRecordId('record123');
-        $record->setType(DnsRecordType::A);
-        $record->setContent('192.168.1.1');
-        $record->setTtl(300);
-        $record->setProxy(false);
+        $mockHttpClient = $this->createMock(HttpClientInterface::class);
+        $mockHttpClient->method('request')
+            ->willReturn($mockResponse)
+        ;
 
-        // 手动设置时间戳字段避免监听器问题
-        $now = new \DateTimeImmutable();
-        $reflection = new \ReflectionClass($record);
-        if ($reflection->hasProperty('createTime')) {
-            $createTimeProperty = $reflection->getProperty('createTime');
-            $createTimeProperty->setAccessible(true);
-            $createTimeProperty->setValue($record, $now);
-        }
-        if ($reflection->hasProperty('updateTime')) {
-            $updateTimeProperty = $reflection->getProperty('updateTime');
-            $updateTimeProperty->setAccessible(true);
-            $updateTimeProperty->setValue($record, $now);
-        }
+        return $mockHttpClient;
+    }
 
-        return $record;
+    /**
+     * 注入 Mock HttpClient 到 DnsRecordService
+     *
+     * 由于 CloudflareHttpClient 是在 BaseCloudflareService 的 getCloudFlareClient 方法中动态创建的，
+     * 我们需要通过替换 DnsRecordService 来注入 Mock HttpClient
+     *
+     * 注意：必须在任何服务被初始化之前调用此方法
+     *
+     * @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass, commandTest.noDirectInstantiation
+     */
+    private function injectMockHttpClient(HttpClientInterface $mockHttpClient): void
+    {
+        // 创建一个自定义的 DnsRecordService，重写 getCloudFlareClient 方法
+        $dnsService = new class(self::getContainer()->get('monolog.logger.cloudflare_dns'), $this->domainRepository, $mockHttpClient) extends DnsRecordService {
+            private HttpClientInterface $mockHttpClient;
+
+            public function __construct($logger, $domainRepository, HttpClientInterface $mockHttpClient)
+            {
+                parent::__construct($logger, $domainRepository);
+                $this->mockHttpClient = $mockHttpClient;
+            }
+
+            protected function getCloudFlareClient(DnsDomain $domain): CloudflareHttpClient
+            {
+                $iamKey = $domain->getIamKey();
+                if (null === $iamKey) {
+                    throw new \RuntimeException('Domain does not have an IAM key configured');
+                }
+
+                $accessKey = $iamKey->getAccessKey();
+                $secretKey = $iamKey->getSecretKey();
+
+                if (null === $accessKey || null === $secretKey) {
+                    throw new \RuntimeException('IAM key is missing access key or secret key');
+                }
+
+                // 返回带有 Mock HttpClient 的 CloudflareHttpClient
+                return new CloudflareHttpClient($accessKey, $secretKey, $this->mockHttpClient);
+            }
+        };
+
+        // 将自定义服务注入容器，然后从容器获取 Command
+        self::getContainer()->set(DnsRecordService::class, $dnsService);
+
+        // 从容器获取 Command 实例
+        $command = self::getService(SyncDomainRecordToLocalCommand::class);
+        $this->command = $command;
+
+        $application = new Application();
+        $application->addCommand($this->command);
+        $this->commandTester = new CommandTester($this->command);
     }
 
     public function testArgumentDomainId(): void
     {
-        $domain = $this->createDnsDomain();
+        // 创建测试数据
+        $domain = $this->createAndPersistDnsDomain();
 
-        $this->domainRepository->expects($this->once())
-            ->method('findBy')
-            ->with(['id' => '1'])
-            ->willReturn([$domain])
-        ;
-
-        $apiResponse = [
+        // Mock HttpClient
+        $mockHttpClient = $this->createMockHttpClient([
             'success' => true,
             'result' => [],
             'result_info' => ['total_pages' => 1],
-        ];
+        ]);
 
-        $this->dnsService->expects($this->once())
-            ->method('listRecords')
-            ->willReturn($apiResponse)
-        ;
+        $this->injectMockHttpClient($mockHttpClient);
 
-        $result = $this->commandTester->execute(['domainId' => '1']);
+        $result = $this->commandTester->execute(['domainId' => (string) $domain->getId()]);
         $this->assertEquals(0, $result);
     }
 }

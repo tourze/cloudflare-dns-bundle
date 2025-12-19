@@ -19,7 +19,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
     name: self::NAME,
     description: '同步指定IAM Key ID下的所有域名到本地',
 )]
-class SyncDomainsCommand extends Command
+final class SyncDomainsCommand extends Command
 {
     public const NAME = 'cloudflare:sync-domains';
 

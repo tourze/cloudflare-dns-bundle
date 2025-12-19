@@ -19,7 +19,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
     name: self::NAME,
     description: '将DNS记录同步到远程Cloudflare'
 )]
-class SyncDomainRecordToRemoteCommand extends Command
+final class SyncDomainRecordToRemoteCommand extends Command
 {
     public const NAME = 'cloudflare:sync-dns-domain-record-to-remote';
 

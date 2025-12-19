@@ -265,7 +265,7 @@ class MyListener
 The bundle supports batch operations via the Cloudflare API:
 
 ```php
-use CloudflareDnsBundle\Service\CloudflareHttpClient;
+use CloudflareDnsBundle\Client\CloudflareHttpClient;
 
 $operations = [
     'posts' => [$newRecord1, $newRecord2],

@@ -6,7 +6,7 @@ namespace CloudflareDnsBundle\Abstract;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Exception\CloudflareServiceException;
-use CloudflareDnsBundle\Service\CloudflareHttpClient;
+use CloudflareDnsBundle\Client\CloudflareHttpClient;
 use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 
@@ -15,6 +15,7 @@ abstract class BaseCloudflareService
 {
     public function __construct(
         protected readonly LoggerInterface $logger,
+        protected readonly ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null,
     ) {
     }
 
@@ -32,7 +33,7 @@ abstract class BaseCloudflareService
             throw new CloudflareServiceException('IAM key is missing access key or secret key');
         }
 
-        return new CloudflareHttpClient($accessKey, $secretKey);
+        return new CloudflareHttpClient($accessKey, $secretKey, $this->httpClient, $this->logger);
     }
 
     /**

@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace CloudflareDnsBundle\Service;
+namespace CloudflareDnsBundle\Client;
 
 use CloudflareDnsBundle\Entity\DnsRecord;
-use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -17,9 +16,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 /**
  * Cloudflare API HTTP 客户端
  * 这是一个值对象,不应该被注册为服务
- * WithMonologChannel 属性仅作为文档说明推荐的日志频道
+ * 使用时需手动实例化并传入 accessKey, secretKey 和可选的 httpClient/logger
  */
-#[WithMonologChannel(channel: 'cloudflare_dns')]
+#[Exclude]
 final class CloudflareHttpClient
 {
     private const API_BASE_URL = 'https://api.cloudflare.com/client/v4';

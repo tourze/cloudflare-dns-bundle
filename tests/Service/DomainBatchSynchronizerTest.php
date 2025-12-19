@@ -6,14 +6,12 @@ namespace CloudflareDnsBundle\Tests\Service;
 
 use CloudflareDnsBundle\Entity\DnsDomain;
 use CloudflareDnsBundle\Entity\IamKey;
-use CloudflareDnsBundle\Exception\TestServiceException;
-use CloudflareDnsBundle\Repository\DnsDomainRepository;
+use CloudflareDnsBundle\Exception\CloudflareServiceException;
 use CloudflareDnsBundle\Service\DnsDomainService;
 use CloudflareDnsBundle\Service\DomainBatchSynchronizer;
 use CloudflareDnsBundle\Service\DomainSynchronizer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -27,54 +25,11 @@ use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 #[RunTestsInSeparateProcesses]
 final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
 {
-    private DnsDomainRepository&MockObject $dnsDomainRepository;
-
-    private DnsDomainService&MockObject $dnsDomainService;
-
-    private DomainSynchronizer&MockObject $domainSynchronizer;
-
-    private LoggerInterface&MockObject $logger;
-
     private DomainBatchSynchronizer $service;
 
     protected function onSetUp(): void
     {
-        $this->dnsDomainRepository = $this->createMock(DnsDomainRepository::class);
-        $this->dnsDomainService = $this->createMock(DnsDomainService::class);
-        $this->domainSynchronizer = $this->createMock(DomainSynchronizer::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-
-        $this->service = $this->createDomainBatchSynchronizer(
-            $this->dnsDomainRepository,
-            $this->dnsDomainService,
-            $this->domainSynchronizer,
-            $this->logger
-        );
-    }
-
-    private function createDomainBatchSynchronizer(
-        ?DnsDomainRepository $dnsDomainRepository = null,
-        ?DnsDomainService $dnsDomainService = null,
-        ?DomainSynchronizer $domainSynchronizer = null,
-        ?LoggerInterface $logger = null,
-    ): DomainBatchSynchronizer {
-        /*
-         * 使用具体类 DnsDomainRepository、DnsDomainService 和 DomainSynchronizer 的原因：
-         * 1) 这些类提供了测试所需的具体方法实现
-         * 2) 当前架构中这些类作为具体实现类，测试需要 mock 其具体行为
-         * 3) 使用具体类能更好地验证方法调用和参数传递
-         */
-
-        // 使用反射创建实例以避免直接实例化
-        $reflection = new \ReflectionClass(DomainBatchSynchronizer::class);
-
-        return $reflection->newInstance(
-            self::getEntityManager(),
-            $dnsDomainRepository ?? $this->createMock(DnsDomainRepository::class),
-            $dnsDomainService ?? $this->createMock(DnsDomainService::class),
-            $domainSynchronizer ?? $this->createMock(DomainSynchronizer::class),
-            $logger ?? $this->createMock(LoggerInterface::class)
-        );
+        $this->service = self::getService(DomainBatchSynchronizer::class);
     }
 
     public function testFilterDomainsWithSpecificDomain(): void
@@ -87,12 +42,10 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
             ],
         ];
 
-        $service = $this->createDomainBatchSynchronizer();
-
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $service->filterDomains($domains, 'example.com', $io);
+        $result = $this->service->filterDomains($domains, 'example.com', $io);
 
         $this->assertCount(1, $result);
         $this->assertEquals('example.com', $result[0]['name']);
@@ -107,12 +60,10 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
             ],
         ];
 
-        $service = $this->createDomainBatchSynchronizer();
-
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $service->filterDomains($domains, 'notfound.com', $io);
+        $result = $this->service->filterDomains($domains, 'notfound.com', $io);
 
         $this->assertEmpty($result);
         $this->assertStringContainsString('未找到指定的域名', $output->fetch());
@@ -128,12 +79,10 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
             ],
         ];
 
-        $service = $this->createDomainBatchSynchronizer();
-
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $service->filterDomains($domains, null, $io);
+        $result = $this->service->filterDomains($domains, null, $io);
 
         $this->assertCount(3, $result);
     }
@@ -142,12 +91,10 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
     {
         $domains = ['result' => []];
 
-        $service = $this->createDomainBatchSynchronizer();
-
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $service->filterDomains($domains, null, $io);
+        $result = $this->service->filterDomains($domains, null, $io);
 
         $this->assertEmpty($result);
         $this->assertStringContainsString('没有找到任何域名', $output->fetch());
@@ -155,17 +102,13 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
 
     public function testShowSyncPreview(): void
     {
+        // 创建真实的 IamKey
+        $iamKey = $this->createAndPersistIamKey();
+
         $domainsToSync = [
             ['name' => 'example.com', 'status' => 'active', 'id' => 'zone123'],
             ['name' => 'test.com', 'status' => 'pending', 'id' => 'zone456'],
         ];
-
-        $iamKey = $this->createIamKey();
-
-        $this->dnsDomainRepository->expects($this->exactly(2))
-            ->method('findOneBy')
-            ->willReturn(null)
-        ;
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -201,67 +144,93 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
 
     public function testExecuteBatchSyncSuccess(): void
     {
+        // 创建真实的 IamKey
+        $iamKey = $this->createAndPersistIamKey();
+
+        // 准备域名数据
         $domainsToSync = [
-            ['name' => 'example.com', 'status' => 'active'],
-            ['name' => 'test.com', 'status' => 'pending'],
+            ['name' => 'example-' . uniqid() . '.com', 'status' => 'active', 'id' => 'zone-' . uniqid()],
+            ['name' => 'test-' . uniqid() . '.com', 'status' => 'pending', 'id' => 'zone-' . uniqid()],
         ];
 
-        $iamKey = $this->createIamKey();
-        $domain = $this->createDnsDomain();
+        // Mock DomainSynchronizer 和 DnsDomainService
+        $domainSynchronizer = $this->createMock(DomainSynchronizer::class);
+        $dnsDomainService = $this->createMock(DnsDomainService::class);
 
-        $this->domainSynchronizer->expects($this->exactly(2))
+        $domainSynchronizer->expects($this->exactly(2))
             ->method('createOrUpdateDomain')
-            ->with($iamKey, self::isArray(), self::isInstanceOf(SymfonyStyle::class))
-            ->willReturn($domain)
+            ->willReturnCallback(function ($key, $data) {
+                $domain = new DnsDomain();
+                $domain->setName($data['name']);
+                $domain->setZoneId($data['id'] ?? null);
+                $domain->setIamKey($key);
+                $domain->setValid(true);
+
+                return $domain;
+            })
         ;
 
-        // EntityManager persist 和 flush 操作由集成测试框架自动处理
+        // 使用反射创建带有 Mock 服务的 DomainBatchSynchronizer
+        $service = $this->createDomainBatchSynchronizerWithMocks($domainSynchronizer, $dnsDomainService);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->executeBatchSync($domainsToSync, $iamKey, $io);
+        $result = $service->executeBatchSync($domainsToSync, $iamKey, $io);
 
         $this->assertEquals([2, 0, 0], $result); // [syncCount, errorCount, skippedCount]
     }
 
     public function testExecuteBatchSyncWithErrors(): void
     {
+        // 创建真实的 IamKey
+        $iamKey = $this->createAndPersistIamKey();
+
         $domainsToSync = [
             ['name' => 'example.com', 'status' => 'active'],
             ['name' => 'invalid.com', 'status' => 'error'],
         ];
 
-        $iamKey = $this->createIamKey();
-        $domain = $this->createDnsDomain();
+        // Mock DomainSynchronizer 和 DnsDomainService
+        $domainSynchronizer = $this->createMock(DomainSynchronizer::class);
+        $dnsDomainService = $this->createMock(DnsDomainService::class);
+        $logger = $this->createMock(LoggerInterface::class);
 
-        $this->domainSynchronizer->expects($this->exactly(2))
+        $domainSynchronizer->expects($this->exactly(2))
             ->method('createOrUpdateDomain')
-            ->willReturnCallback(function ($key, $data) use ($domain) {
+            ->willReturnCallback(function ($key, $data) {
                 if ('invalid.com' === $data['name']) {
-                    throw new TestServiceException('Sync error');
+                    throw new CloudflareServiceException('Sync error');
                 }
+
+                $domain = new DnsDomain();
+                $domain->setName($data['name']);
+                $domain->setIamKey($key);
+                $domain->setValid(true);
 
                 return $domain;
             })
         ;
 
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('error')
             ->with('同步域名失败', self::isArray())
         ;
 
+        // 使用反射创建带有 Mock 服务的 DomainBatchSynchronizer
+        $service = $this->createDomainBatchSynchronizerWithMocks($domainSynchronizer, $dnsDomainService, $logger);
+
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->service->executeBatchSync($domainsToSync, $iamKey, $io);
+        $result = $service->executeBatchSync($domainsToSync, $iamKey, $io);
 
         $this->assertEquals([1, 1, 0], $result); // [syncCount, errorCount, skippedCount]
     }
 
     public function testCreateTempDomain(): void
     {
-        $iamKey = $this->createIamKey();
+        $iamKey = $this->createAndPersistIamKey();
 
         $result = $this->service->createTempDomain($iamKey);
 
@@ -271,7 +240,7 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
 
     public function testListAllDomainsSuccess(): void
     {
-        $iamKey = $this->createIamKey();
+        $iamKey = $this->createAndPersistIamKey();
         $expectedResponse = [
             'success' => true,
             'result' => [
@@ -280,12 +249,16 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
             ],
         ];
 
-        $this->dnsDomainService->expects($this->once())
+        // Mock DnsDomainService
+        $dnsDomainService = $this->createMock(DnsDomainService::class);
+        $dnsDomainService->expects($this->once())
             ->method('listDomains')
             ->willReturn($expectedResponse)
         ;
 
-        $result = $this->service->listAllDomains($iamKey);
+        $service = $this->createDomainBatchSynchronizerWithMocks(null, $dnsDomainService);
+
+        $result = $service->listAllDomains($iamKey);
 
         $this->assertEquals($expectedResponse, $result);
     }
@@ -322,25 +295,39 @@ final class DomainBatchSynchronizerTest extends AbstractIntegrationTestCase
         $this->assertStringContainsString('没有找到任何域名', $output->fetch());
     }
 
-    private function createIamKey(): IamKey
+    /**
+     * 创建并持久化 IamKey 实体
+     */
+    private function createAndPersistIamKey(): IamKey
     {
         $iamKey = new IamKey();
-        $iamKey->setName('Test IAM Key');
+        $iamKey->setName('Test IAM Key ' . uniqid());
         $iamKey->setAccessKey('test@example.com');
         $iamKey->setSecretKey('test-secret-key');
         $iamKey->setAccountId('test-account-id');
         $iamKey->setValid(true);
 
+        $this->persistAndFlush($iamKey);
+
         return $iamKey;
     }
 
-    private function createDnsDomain(): DnsDomain
-    {
-        $domain = new DnsDomain();
-        $domain->setName('example.com');
-        $domain->setZoneId('test-zone-id');
-        $domain->setValid(true);
+    /**
+     * 使用反射创建带有 Mock 服务的 DomainBatchSynchronizer
+     */
+    private function createDomainBatchSynchronizerWithMocks(
+        ?DomainSynchronizer $domainSynchronizer = null,
+        ?DnsDomainService $dnsDomainService = null,
+        ?LoggerInterface $logger = null,
+    ): DomainBatchSynchronizer {
+        $reflection = new \ReflectionClass(DomainBatchSynchronizer::class);
 
-        return $domain;
+        return $reflection->newInstance(
+            self::getEntityManager(),
+            self::getService('CloudflareDnsBundle\Repository\DnsDomainRepository'),
+            $dnsDomainService ?? self::getService(DnsDomainService::class),
+            $domainSynchronizer ?? self::getService(DomainSynchronizer::class),
+            $logger ?? self::getService(LoggerInterface::class)
+        );
     }
 }

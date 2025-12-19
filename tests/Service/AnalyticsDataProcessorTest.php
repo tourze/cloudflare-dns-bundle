@@ -17,7 +17,7 @@ use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
  */
 #[CoversClass(AnalyticsDataProcessor::class)]
 #[RunTestsInSeparateProcesses]
-class AnalyticsDataProcessorTest extends AbstractIntegrationTestCase
+final class AnalyticsDataProcessorTest extends AbstractIntegrationTestCase
 {
     private AnalyticsDataProcessor $processor;
 
